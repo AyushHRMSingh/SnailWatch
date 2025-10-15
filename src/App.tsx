@@ -54,6 +54,10 @@ const TypewriterText = ({ text, speed = 50 }: { text: string; speed?: number }) 
   return <span>{displayText}</span>;
 };
 
+// Configuration: Set to false to skip loading the large local JSON database
+// This speeds up loading over slow connections (e.g., ngrok tunnels)
+const LOAD_LOCAL_DATABASE = false;
+
 function App() {
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [selectedAircraftDetail, setSelectedAircraftDetail] = useState<AircraftDetail | null>(null);
@@ -61,13 +65,13 @@ function App() {
   const [countdown, setCountdown] = useState(0);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [icaoRepo, setIcaoRepo] = useState<any>(null);
+  const [icaoRepo, setIcaoRepo] = useState<any>(LOAD_LOCAL_DATABASE ? null : {});
   const [showSettings, setShowSettings] = useState(false);
   const [customLat, setCustomLat] = useState('');
   const [customLon, setCustomLon] = useState('');
   const [radius, setRadius] = useState('20');
   const [useCustomLocation, setUseCustomLocation] = useState(false);
-  const [isLoadingRepo, setIsLoadingRepo] = useState(true);
+  const [isLoadingRepo, setIsLoadingRepo] = useState(LOAD_LOCAL_DATABASE);
   const [loadingProgress, setLoadingProgress] = useState(0);
 
   const previousAircraft = useRef(new Set<string>());
@@ -208,10 +212,7 @@ function App() {
       return;
     }
     
-    if (!icaoRepo) {
-      console.log('Waiting for ICAO repo to load...');
-      return;
-    }
+    // Don't block on icaoRepo - it's optional now
     
     console.log('Fetching aircraft list...');
     setCountdown(REFRESH_INTERVAL);
@@ -241,6 +242,17 @@ function App() {
   };
 
   useEffect(() => {
+    console.log('useEffect running, LOAD_LOCAL_DATABASE:', LOAD_LOCAL_DATABASE);
+    
+    // Check if local database loading is enabled
+    if (!LOAD_LOCAL_DATABASE) {
+      console.log('Local database loading disabled - using remote APIs only');
+      setIcaoRepo({}); // Set empty object so app doesn't wait
+      setIsLoadingRepo(false);
+      console.log('icaoRepo set to empty object, isLoadingRepo set to false');
+      return;
+    }
+    
     // Load ICAO repo JSON on startup
     console.log('Loading ICAO repository...');
     setIsLoadingRepo(true);
@@ -321,7 +333,10 @@ function App() {
           setIsLoadingRepo(false);
         }, 500);
       });
+  }, []);
 
+  // Separate useEffect for geolocation
+  useEffect(() => {
     // Get user's location
     if ('geolocation' in navigator) {
       console.log('Requesting geolocation...');
@@ -334,26 +349,40 @@ function App() {
         },
         (error) => {
           console.error('Geolocation error:', error);
-          setLocationError(error.message);
+          let errorMsg = 'Location access denied';
+          if (error.code === 1) errorMsg = 'Location permission denied';
+          else if (error.code === 2) errorMsg = 'Location unavailable';
+          else if (error.code === 3) errorMsg = 'Location timeout';
+          setLocationError(errorMsg + ' - Using default location (LAX)');
           // Fallback to default location (LAX area)
           setUserLocation({ lat: 33.9416, lon: -118.4085 });
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 0
         }
       );
     } else {
       console.error('Geolocation not supported');
-      setLocationError('Geolocation not supported by browser');
+      setLocationError('Geolocation not supported - Using default location (LAX)');
       // Fallback to default location
       setUserLocation({ lat: 33.9416, lon: -118.4085 });
     }
   }, []);
 
   useEffect(() => {
-    if (!userLocation || !icaoRepo) return;
+    console.log('fetchData useEffect triggered, userLocation:', userLocation);
+    if (!userLocation) {
+      console.log('No userLocation yet, waiting...');
+      return;
+    }
     
+    console.log('Starting fetchData and interval');
     fetchData();
     const interval = setInterval(fetchData, REFRESH_INTERVAL * 1000);
     return () => clearInterval(interval);
-  }, [userLocation, radius, icaoRepo]);
+  }, [userLocation, radius]);
 
   useEffect(() => {
     const timer = setInterval(() => setCountdown(prev => (prev > 0 ? prev - 1 : 0)), 1000);
