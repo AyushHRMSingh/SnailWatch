@@ -11,15 +11,29 @@
 
 .radar-bg {
   position: absolute;
-  inset: 0;
-  background: repeating-radial-gradient(circle at center, rgba(0,255,0,0.05) 0 20px, transparent 20px 40px);
-  animation: radar-spin 15s linear infinite;
+  top: 50%;
+  left: 50%;
+  width: 300vmax;
+  height: 300vmax;
+  margin-left: -150vmax;
+  margin-top: -150vmax;
+  background: 
+    repeating-radial-gradient(circle at center, rgba(0,255,0,0.15) 0 2px, transparent 2px 60px),
+    repeating-radial-gradient(circle at center, rgba(0,255,0,0.08) 0 1px, transparent 1px 30px),
+    conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(0,255,0,0.3) 30deg, transparent 60deg);
+  animation: radar-spin 8s linear infinite, radar-pulse 3s ease-in-out infinite;
   z-index: 0;
+  filter: blur(0.5px);
 }
 
 @keyframes radar-spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+@keyframes radar-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 .App-header {
@@ -33,17 +47,37 @@
   z-index: 2;
   margin: 2rem auto;
   max-width: 700px;
-  background: rgba(0,32,0,0.9);
-  border: 2px solid #00ff00;
+  background: rgba(0,32,0,0.95);
+  border: 3px solid #00ff00;
   border-radius: 16px;
-  box-shadow: 0 0 25px #00ff44aa;
+  box-shadow: 
+    0 0 30px #00ff44aa,
+    inset 0 0 20px rgba(0,255,0,0.1);
   padding: 2rem;
-  transition: transform 0.5s ease, box-shadow 0.5s ease;
+  transition: all 0.4s ease;
+  animation: card-pulse 3s ease-in-out infinite;
 }
 
 .details-card:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 50px #00ff44cc;
+  transform: scale(1.08) translateY(-5px);
+  box-shadow: 
+    0 0 60px #00ff44ee,
+    0 0 100px #00ff4488,
+    inset 0 0 30px rgba(0,255,0,0.2);
+  border-color: #00ff88;
+}
+
+@keyframes card-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 30px #00ff44aa,
+      inset 0 0 20px rgba(0,255,0,0.1);
+  }
+  50% {
+    box-shadow: 
+      0 0 40px #00ff44cc,
+      inset 0 0 25px rgba(0,255,0,0.15);
+  }
 }
 
 .detail-item {
@@ -72,11 +106,53 @@
 .glitch-text {
   font-size: 4rem;
   color: #00ff00;
-  text-shadow: 0 0 5px #00ff00, 0 0 15px #00ff44aa;
-  animation: glitch 0.8s infinite alternate;
+  text-shadow: 
+    0 0 10px #00ff00, 
+    0 0 20px #00ff00,
+    0 0 30px #00ff00,
+    0 0 40px #00ff44aa,
+    0 0 70px #00ff44aa;
+  animation: glitch 0.5s infinite alternate, glow-pulse 1.5s ease-in-out infinite;
+  font-weight: 900;
+  letter-spacing: 0.1em;
 }
 
 @keyframes glitch {
-  0% { text-shadow: 2px 2px #00ff00, -2px -2px #00ff44aa; }
-  100% { text-shadow: -2px 2px #00ff00, 2px -2px #00ff44aa; }
+  0% { 
+    text-shadow: 
+      3px 3px #00ff00, 
+      -3px -3px #ff0000,
+      0 0 20px #00ff00,
+      0 0 40px #00ff44aa; 
+  }
+  25% {
+    text-shadow: 
+      -3px 3px #00ff00, 
+      3px -3px #0000ff,
+      0 0 25px #00ff00,
+      0 0 50px #00ff44aa;
+  }
+  50% {
+    text-shadow: 
+      3px -3px #00ff00, 
+      -3px 3px #ff0000,
+      0 0 30px #00ff00,
+      0 0 60px #00ff44aa;
+  }
+  100% { 
+    text-shadow: 
+      -3px -3px #00ff00, 
+      3px 3px #0000ff,
+      0 0 35px #00ff00,
+      0 0 70px #00ff44aa; 
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.5);
+  }
 }

@@ -1,11 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
-
-// --- SVG Icons ---
-const RegistrationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>;
-const TypeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.3 11.7 12.4 2.8a2.2 2.2 0 0 0-3.1 0L2.7 11.7a2.2 2.2 0 0 0 0 3.1l8.9 8.9a2.2 2.2 0 0 0 3.1 0l8.9-8.9a2.2 2.2 0 0 0 0-3.1Z"/><path d="m12 8-3 3 3 3 3-3-3-3Z"/></svg>;
-const ManufacturerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7h-4a3 3 0 0 0-3 3v4Z"/><path d="M21 15a7 7 0 0 0-7-7h-4a3 3 0 0 0-3 3v4Z"/><path d="M12 8a7 7 0 0 0-7 7h4a3 3 0 0 0 3-3V8Z"/><path d="M3 8a7 7 0 0 0 7 7h4a3 3 0 0 0 3-3V8Z"/></svg>;
-const OwnerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+import { FileText, Plane, Factory, Users } from 'lucide-react';
 
 // --- Data Interfaces ---
 interface Aircraft {
@@ -122,10 +117,10 @@ function App() {
             </div>
           ) : (
             <>
-              <div className="detail-item"><RegistrationIcon /><p><strong>Registration:</strong> {selectedAircraftDetail.Registration}</p></div>
-              <div className="detail-item"><TypeIcon /><p><strong>Type:</strong> {selectedAircraftDetail.Type}</p></div>
-              <div className="detail-item"><ManufacturerIcon /><p><strong>Manufacturer:</strong> {selectedAircraftDetail.Manufacturer}</p></div>
-              <div className="detail-item"><OwnerIcon /><p><strong>Owner:</strong> {selectedAircraftDetail.RegisteredOwners}</p></div>
+              <div className="detail-item"><FileText size={24} color="#00ff00" /><p><strong>Registration:</strong> {selectedAircraftDetail.Registration}</p></div>
+              <div className="detail-item"><Plane size={24} color="#00ff00" /><p><strong>Type:</strong> {selectedAircraftDetail.Type}</p></div>
+              <div className="detail-item"><Factory size={24} color="#00ff00" /><p><strong>Manufacturer:</strong> {selectedAircraftDetail.Manufacturer}</p></div>
+              <div className="detail-item"><Users size={24} color="#00ff00" /><p><strong>Owner:</strong> {selectedAircraftDetail.RegisteredOwners}</p></div>
             </>
           )}
         </div>
