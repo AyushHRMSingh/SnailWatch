@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
-import { FileText, Plane, Factory, Users, Radio } from 'lucide-react';
+import { FileText, Plane, Factory, Users, Radio, Settings, X } from 'lucide-react';
 
 // --- Data Interfaces ---
 interface Aircraft {
@@ -28,31 +28,142 @@ function App() {
   const [countdown, setCountdown] = useState(0);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [icaoRepo, setIcaoRepo] = useState<any>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [customLat, setCustomLat] = useState('');
+  const [customLon, setCustomLon] = useState('');
+  const [radius, setRadius] = useState('20');
+  const [useCustomLocation, setUseCustomLocation] = useState(false);
 
   const previousAircraft = useRef(new Set<string>());
   const REFRESH_INTERVAL = 5;
 
   const fetchAircraftDetails = async (hex: string) => {
     try {
-      console.log('Fetching details:', hex);
-      const res = await fetch(`/details-api/aircraft/${hex}`);
-      console.log('Details response:', res.status);
-      if (!res.ok) {
-        if (res.status === 404) {
-          setSelectedAircraftDetail({ Registration: hex, error: 'Not found' } as any);
+      console.log('Fetching details for hex:', hex);
+      
+      // Try primary API first
+      try {
+        const res = await fetch(`/details-api/aircraft/${hex}`);
+        if (res.ok) {
+          const details: AircraftDetail = await res.json();
+          setSelectedAircraftDetail(null);
+          setIsRevealing(true);
+          setTimeout(() => {
+            setSelectedAircraftDetail(details);
+            setIsRevealing(false);
+          }, 2000);
+          console.log('✓ Primary API succeeded');
           return;
         }
-        throw new Error(`HTTP ${res.status}`);
+        console.log('Primary API failed, trying fallbacks...');
+      } catch (err) {
+        console.log('Primary API error:', err);
       }
-      const details: AircraftDetail = await res.json();
-      setSelectedAircraftDetail(null);
-      setIsRevealing(true);
-      setTimeout(() => {
-        setSelectedAircraftDetail(details);
-        setIsRevealing(false);
-      }, 2000);
+
+      // Try adsbdb.com
+      try {
+        console.log('Trying adsbdb.com...');
+        const adsbRes = await fetch(`https://api.adsbdb.com/v0/aircraft/${hex}`);
+        if (adsbRes.ok) {
+          const adsbData = await adsbRes.json();
+          const aircraft = adsbData.response?.aircraft;
+          if (aircraft) {
+            const details: AircraftDetail = {
+              Registration: aircraft.registration || hex,
+              Manufacturer: aircraft.manufacturer || 'Unknown',
+              Type: aircraft.type || aircraft.icao_type || 'Unknown',
+              RegisteredOwners: aircraft.registered_owner || 'Unknown',
+            };
+            setSelectedAircraftDetail(null);
+            setIsRevealing(true);
+            setTimeout(() => {
+              setSelectedAircraftDetail(details);
+              setIsRevealing(false);
+            }, 2000);
+            console.log('✓ adsbdb.com succeeded');
+            return;
+          }
+        }
+        console.log('adsbdb.com failed, trying hexdb.io...');
+      } catch (err) {
+        console.log('adsbdb.com error:', err);
+      }
+
+      // Try hexdb.io
+      try {
+        console.log('Trying hexdb.io...');
+        const hexdbRes = await fetch(`https://hexdb.io/api/v1/aircraft/${hex}`);
+        if (hexdbRes.ok) {
+          const hexdbData = await hexdbRes.json();
+          if (!hexdbData.error) {
+            const details: AircraftDetail = {
+              Registration: hexdbData.Registration || hex,
+              Manufacturer: hexdbData.Manufacturer || 'Unknown',
+              Type: hexdbData.Type || hexdbData.ICAOTypeCode || 'Unknown',
+              RegisteredOwners: hexdbData.RegisteredOwners || 'Unknown',
+            };
+            setSelectedAircraftDetail(null);
+            setIsRevealing(true);
+            setTimeout(() => {
+              setSelectedAircraftDetail(details);
+              setIsRevealing(false);
+            }, 2000);
+            console.log('✓ hexdb.io succeeded');
+            return;
+          }
+        }
+        console.log('hexdb.io failed, trying local JSON...');
+      } catch (err) {
+        console.log('hexdb.io error:', err);
+      }
+
+      // Try local ICAO repo JSON
+      if (icaoRepo) {
+        console.log('Trying local ICAO repo...');
+        const hexUpper = hex.toUpperCase();
+        console.log('Looking up hex:', hexUpper, 'in repo with', Object.keys(icaoRepo).length, 'entries');
+        const localData = icaoRepo[hexUpper];
+        console.log('Local data found:', localData);
+        if (localData) {
+          // Build details from whatever fields are available
+          const registration = localData.r || localData.reg || localData.registration || hex;
+          const manufacturer = localData.m || localData.manufacturer || (localData.model ? `Unknown (${localData.model})` : null);
+          const type = localData.t || localData.type || localData.icaotype || localData.short_type || null;
+          const owner = localData.o || localData.owner || localData.ownop || null;
+          
+          console.log('Parsed data:', { registration, manufacturer, type, owner });
+          
+          // Only use this entry if we have at least registration or some identifying info
+          if (registration || type) {
+            const details: AircraftDetail = {
+              Registration: registration,
+              Manufacturer: manufacturer || 'Unknown',
+              Type: type || 'Unknown',
+              RegisteredOwners: owner || 'Unknown',
+            };
+            setSelectedAircraftDetail(null);
+            setIsRevealing(true);
+            setTimeout(() => {
+              setSelectedAircraftDetail(details);
+              setIsRevealing(false);
+            }, 2000);
+            console.log('✓ Local ICAO repo succeeded (partial data)');
+            return;
+          }
+        } else {
+          console.log('No entry found for hex:', hexUpper);
+        }
+      } else {
+        console.log('ICAO repo not loaded yet');
+      }
+
+      // All sources failed
+      console.log('✗ All sources failed');
+      setSelectedAircraftDetail({ Registration: hex, error: 'Not found in any database' } as any);
     } catch (err) {
-      console.error('Error fetching details:', err);
+      console.error('Error in fetchAircraftDetails:', err);
+      setSelectedAircraftDetail({ Registration: hex, error: 'Error fetching details' } as any);
     }
   };
 
@@ -65,7 +176,7 @@ function App() {
     console.log('Fetching aircraft list...');
     setCountdown(REFRESH_INTERVAL);
     try {
-      const url = `/api/lat/${userLocation.lat}/lon/${userLocation.lon}/dist/20`;
+      const url = `/api/lat/${userLocation.lat}/lon/${userLocation.lon}/dist/${radius}`;
       console.log('Request:', url);
       const res = await fetch(url);
       console.log('Response:', res.status);
@@ -90,6 +201,54 @@ function App() {
   };
 
   useEffect(() => {
+    // Load ICAO repo JSON on startup
+    console.log('Loading ICAO repository...');
+    fetch('/icaorepo.json')
+      .then(res => res.text())
+      .then(text => {
+        const icaoMap: any = {};
+        
+        // Try parsing as regular JSON first
+        try {
+          const data = JSON.parse(text);
+          if (Array.isArray(data)) {
+            data.forEach((entry: any) => {
+              if (entry.icao) {
+                icaoMap[entry.icao.toUpperCase()] = entry;
+              }
+            });
+          } else if (typeof data === 'object') {
+            // Already an object
+            Object.assign(icaoMap, data);
+          }
+        } catch (e) {
+          // If regular JSON fails, try NDJSON (newline-delimited JSON)
+          console.log('Parsing as NDJSON...');
+          const lines = text.split('\n');
+          lines.forEach((line, index) => {
+            if (line.trim()) {
+              try {
+                const entry = JSON.parse(line);
+                if (entry.icao) {
+                  icaoMap[entry.icao.toUpperCase()] = entry;
+                }
+              } catch (err) {
+                // Skip invalid lines
+                if (index < 5) {
+                  console.warn('Failed to parse line', index, ':', err);
+                }
+              }
+            }
+          });
+        }
+        
+        setIcaoRepo(icaoMap);
+        console.log(`✓ ICAO repository loaded (${Object.keys(icaoMap).length} entries)`);
+      })
+      .catch(err => {
+        console.error('Failed to load ICAO repo:', err);
+      });
+
     // Get user's location
     if ('geolocation' in navigator) {
       console.log('Requesting geolocation...');
@@ -141,11 +300,101 @@ function App() {
         </div>
       )}
 
+      <button 
+        className="settings-button"
+        onClick={() => setShowSettings(true)}
+        aria-label="Settings"
+      >
+        <Settings size={24} color="#00ff00" />
+      </button>
+
+      {showSettings && (
+        <div className="settings-overlay" onClick={() => setShowSettings(false)}>
+          <div className="settings-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="settings-header">
+              <h2>SETTINGS</h2>
+              <button className="close-button" onClick={() => setShowSettings(false)}>
+                <X size={24} color="#00ff00" />
+              </button>
+            </div>
+            
+            <div className="settings-content">
+              <div className="settings-section">
+                <label className="checkbox-label">
+                  <input 
+                    type="checkbox" 
+                    checked={useCustomLocation}
+                    onChange={(e) => setUseCustomLocation(e.target.checked)}
+                  />
+                  <span>Use Custom Location</span>
+                </label>
+              </div>
+
+              {useCustomLocation && (
+                <>
+                  <div className="settings-section">
+                    <label>Latitude</label>
+                    <input 
+                      type="text" 
+                      value={customLat}
+                      onChange={(e) => setCustomLat(e.target.value)}
+                      placeholder="e.g., 33.9416"
+                      className="settings-input"
+                    />
+                  </div>
+
+                  <div className="settings-section">
+                    <label>Longitude</label>
+                    <input 
+                      type="text" 
+                      value={customLon}
+                      onChange={(e) => setCustomLon(e.target.value)}
+                      placeholder="e.g., -118.4085"
+                      className="settings-input"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="settings-section">
+                <label>Radius (km)</label>
+                <input 
+                  type="text" 
+                  value={radius}
+                  onChange={(e) => setRadius(e.target.value)}
+                  placeholder="e.g., 20"
+                  className="settings-input"
+                />
+              </div>
+
+              <button 
+                className="apply-button"
+                onClick={() => {
+                  if (useCustomLocation && customLat && customLon) {
+                    const lat = parseFloat(customLat);
+                    const lon = parseFloat(customLon);
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                      setUserLocation({ lat, lon });
+                      setLocationError(null);
+                    } else {
+                      setLocationError('Invalid coordinates');
+                    }
+                  }
+                  setShowSettings(false);
+                }}
+              >
+                APPLY
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="App-header">
         <h1>Snailwatch</h1>
         {userLocation && (
           <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>
-            📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)}
+            📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)} • {radius}km radius
           </p>
         )}
         {locationError && (
