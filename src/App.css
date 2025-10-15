@@ -47,60 +47,213 @@
   z-index: 2;
   margin: 2rem auto;
   max-width: 700px;
-  background: rgba(0,32,0,0.95);
+  background: rgba(0,32,0,0.98);
   border: 3px solid #00ff00;
-  border-radius: 16px;
+  border-radius: 20px;
   box-shadow: 
-    0 0 30px #00ff44aa,
-    inset 0 0 20px rgba(0,255,0,0.1);
-  padding: 2rem;
+    0 0 40px #00ff44aa,
+    0 0 80px rgba(0,255,0,0.3),
+    inset 0 0 30px rgba(0,255,0,0.15),
+    inset 0 0 1px 2px rgba(0,255,0,0.3);
+  padding: 2.5rem;
   transition: all 0.4s ease;
   animation: card-pulse 3s ease-in-out infinite;
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.details-card-enter {
+  animation: card-slide-in 0.5s ease-out, card-pulse 3s ease-in-out infinite 0.5s;
+}
+
+.details-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #00ff00, #00ff88, #00ff00);
+  border-radius: 20px;
+  z-index: -1;
+  opacity: 0.3;
+  animation: border-glow 2s linear infinite;
+}
+
+@keyframes border-glow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
 }
 
 .details-card:hover {
-  transform: scale(1.08) translateY(-5px);
+  transform: scale(1.08) translateY(-8px);
   box-shadow: 
     0 0 60px #00ff44ee,
-    0 0 100px #00ff4488,
-    inset 0 0 30px rgba(0,255,0,0.2);
+    0 0 120px rgba(0,255,0,0.5),
+    inset 0 0 40px rgba(0,255,0,0.25),
+    inset 0 0 1px 3px rgba(0,255,0,0.5);
   border-color: #00ff88;
 }
 
 @keyframes card-pulse {
   0%, 100% {
     box-shadow: 
-      0 0 30px #00ff44aa,
-      inset 0 0 20px rgba(0,255,0,0.1);
+      0 0 40px #00ff44aa,
+      0 0 80px rgba(0,255,0,0.3),
+      inset 0 0 30px rgba(0,255,0,0.15);
   }
   50% {
     box-shadow: 
-      0 0 40px #00ff44cc,
-      inset 0 0 25px rgba(0,255,0,0.15);
+      0 0 50px #00ff44cc,
+      0 0 100px rgba(0,255,0,0.4),
+      inset 0 0 35px rgba(0,255,0,0.2);
   }
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgba(0,255,0,0.3);
+}
+
+.card-header-enter {
+  animation: slide-in-left 0.5s ease-out 0.1s both;
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: #00ff00;
+  text-shadow: 
+    0 0 10px rgba(0,255,0,0.8),
+    0 0 20px rgba(0,255,0,0.5);
 }
 
 .detail-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin: 0.5rem 0;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: rgba(0,255,0,0.05);
+  border-left: 3px solid rgba(0,255,0,0.5);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.detail-item:hover {
+  background: rgba(0,255,0,0.1);
+  border-left-color: #00ff00;
+  transform: translateX(5px);
+  box-shadow: 0 0 15px rgba(0,255,0,0.3);
+}
+
+.detail-item p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.detail-item strong {
+  color: #00ff88;
+  text-shadow: 0 0 5px rgba(0,255,0,0.5);
+}
+
+.detail-item-1 {
+  animation: slide-in-left 0.5s ease-out 0.2s both;
+}
+
+.detail-item-2 {
+  animation: slide-in-left 0.5s ease-out 0.3s both;
+}
+
+.detail-item-3 {
+  animation: slide-in-left 0.5s ease-out 0.4s both;
+}
+
+.detail-item-4 {
+  animation: slide-in-left 0.5s ease-out 0.5s both;
+}
+
+@keyframes card-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .reveal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.85);
+  background: 
+    radial-gradient(circle at center, rgba(0,255,0,0.15) 0%, rgba(0,0,0,0.95) 60%),
+    rgba(0,0,0,0.9);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 999;
-  animation: fadeInOut 2.5s ease-in-out;
+  backdrop-filter: blur(8px);
+  animation: reveal-fade-in 0.3s ease-out;
 }
 
-@keyframes fadeInOut {
-  0%, 100% { opacity: 0; }
-  50% { opacity: 1; }
+.reveal-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,255,0,0.03) 0px,
+    transparent 2px,
+    transparent 4px,
+    rgba(0,255,0,0.03) 6px
+  );
+  animation: scan-lines 8s linear infinite;
+  pointer-events: none;
+}
+
+.reveal-content {
+  animation: reveal-scale-in 0.5s ease-out;
+}
+
+@keyframes reveal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes reveal-scale-in {
+  from { 
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to { 
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes scan-lines {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(20px); }
 }
 
 .glitch-text {
