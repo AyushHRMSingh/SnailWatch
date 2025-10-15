@@ -2,6 +2,33 @@ import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { FileText, Plane, Factory, Users, Radio, Settings, X } from 'lucide-react';
 
+// Typewriter hook
+const useTypewriter = (text: string, speed: number = 50) => {
+  const [displayText, setDisplayText] = useState('');
+  
+  useEffect(() => {
+    if (!text) {
+      setDisplayText('');
+      return;
+    }
+    
+    setDisplayText('');
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i < text.length) {
+        setDisplayText(text.slice(0, i + 1));
+        i++;
+      } else {
+        clearInterval(timer);
+      }
+    }, speed);
+    
+    return () => clearInterval(timer);
+  }, [text, speed]);
+  
+  return displayText;
+};
+
 // --- Data Interfaces ---
 interface Aircraft {
   hex: string;
@@ -14,12 +41,18 @@ interface Aircraft {
 }
 
 interface AircraftDetail {
+  ICAO: string;
   Registration: string;
   Manufacturer: string;
   Type: string;
   RegisteredOwners: string;
   error?: string;
 }
+
+const TypewriterText = ({ text, speed = 50 }: { text: string; speed?: number }) => {
+  const displayText = useTypewriter(text, speed);
+  return <span>{displayText}</span>;
+};
 
 function App() {
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
@@ -34,9 +67,11 @@ function App() {
   const [customLon, setCustomLon] = useState('');
   const [radius, setRadius] = useState('20');
   const [useCustomLocation, setUseCustomLocation] = useState(false);
+  const [isLoadingRepo, setIsLoadingRepo] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   const previousAircraft = useRef(new Set<string>());
-  const REFRESH_INTERVAL = 5;
+  const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
 
   const fetchAircraftDetails = async (hex: string) => {
     try {
@@ -47,12 +82,12 @@ function App() {
         const res = await fetch(`/details-api/aircraft/${hex}`);
         if (res.ok) {
           const details: AircraftDetail = await res.json();
-          setSelectedAircraftDetail(null);
+          details.ICAO = hex;
           setIsRevealing(true);
           setTimeout(() => {
-            setSelectedAircraftDetail(details);
             setIsRevealing(false);
-          }, 2000);
+            setSelectedAircraftDetail(details);
+          }, 1500);
           console.log('✓ Primary API succeeded');
           return;
         }
@@ -70,17 +105,17 @@ function App() {
           const aircraft = adsbData.response?.aircraft;
           if (aircraft) {
             const details: AircraftDetail = {
+              ICAO: hex,
               Registration: aircraft.registration || hex,
               Manufacturer: aircraft.manufacturer || 'Unknown',
               Type: aircraft.type || aircraft.icao_type || 'Unknown',
               RegisteredOwners: aircraft.registered_owner || 'Unknown',
             };
-            setSelectedAircraftDetail(null);
             setIsRevealing(true);
             setTimeout(() => {
-              setSelectedAircraftDetail(details);
               setIsRevealing(false);
-            }, 2000);
+              setSelectedAircraftDetail(details);
+            }, 1500);
             console.log('✓ adsbdb.com succeeded');
             return;
           }
@@ -98,17 +133,17 @@ function App() {
           const hexdbData = await hexdbRes.json();
           if (!hexdbData.error) {
             const details: AircraftDetail = {
+              ICAO: hex,
               Registration: hexdbData.Registration || hex,
               Manufacturer: hexdbData.Manufacturer || 'Unknown',
               Type: hexdbData.Type || hexdbData.ICAOTypeCode || 'Unknown',
               RegisteredOwners: hexdbData.RegisteredOwners || 'Unknown',
             };
-            setSelectedAircraftDetail(null);
             setIsRevealing(true);
             setTimeout(() => {
-              setSelectedAircraftDetail(details);
               setIsRevealing(false);
-            }, 2000);
+              setSelectedAircraftDetail(details);
+            }, 1500);
             console.log('✓ hexdb.io succeeded');
             return;
           }
@@ -118,41 +153,41 @@ function App() {
         console.log('hexdb.io error:', err);
       }
 
-      // Try local ICAO repo JSON
+      // Try local ICAO repo JSON as LAST resort
       if (icaoRepo) {
-        console.log('Trying local ICAO repo...');
+        console.log('Trying local ICAO repo as last resort...');
         const hexUpper = hex.toUpperCase();
         console.log('Looking up hex:', hexUpper, 'in repo with', Object.keys(icaoRepo).length, 'entries');
         const localData = icaoRepo[hexUpper];
         console.log('Local data found:', localData);
         if (localData) {
           // Build details from whatever fields are available
-          const registration = localData.r || localData.reg || localData.registration || hex;
-          const manufacturer = localData.m || localData.manufacturer || (localData.model ? `Unknown (${localData.model})` : null);
-          const type = localData.t || localData.type || localData.icaotype || localData.short_type || null;
-          const owner = localData.o || localData.owner || localData.ownop || null;
+          const registration = localData.reg || localData.r || localData.registration || null;
+          const manufacturer = localData.manufacturer || localData.m || null;
+          const type = localData.icaotype || localData.t || localData.type || localData.short_type || null;
+          const owner = localData.ownop || localData.o || localData.owner || null;
+          const model = localData.model || null;
           
-          console.log('Parsed data:', { registration, manufacturer, type, owner });
+          console.log('Parsed data:', { registration, manufacturer, type, owner, model, rawData: localData });
           
-          // Only use this entry if we have at least registration or some identifying info
-          if (registration || type) {
-            const details: AircraftDetail = {
-              Registration: registration,
-              Manufacturer: manufacturer || 'Unknown',
-              Type: type || 'Unknown',
-              RegisteredOwners: owner || 'Unknown',
-            };
-            setSelectedAircraftDetail(null);
-            setIsRevealing(true);
-            setTimeout(() => {
-              setSelectedAircraftDetail(details);
-              setIsRevealing(false);
-            }, 2000);
-            console.log('✓ Local ICAO repo succeeded (partial data)');
-            return;
-          }
+          // Build the details object with whatever we have
+          const details: AircraftDetail = {
+            ICAO: hex,
+            Registration: registration || hex,
+            Manufacturer: manufacturer || (model ? model : 'Unknown'),
+            Type: type || 'Unknown',
+            RegisteredOwners: owner || 'Unknown',
+          };
+          
+          setIsRevealing(true);
+          setTimeout(() => {
+            setIsRevealing(false);
+            setSelectedAircraftDetail(details);
+          }, 1500);
+          console.log('✓ Local ICAO repo succeeded:', details);
+          return;
         } else {
-          console.log('No entry found for hex:', hexUpper);
+          console.log('No entry found in local repo for hex:', hexUpper);
         }
       } else {
         console.log('ICAO repo not loaded yet');
@@ -160,16 +195,21 @@ function App() {
 
       // All sources failed
       console.log('✗ All sources failed');
-      setSelectedAircraftDetail({ Registration: hex, error: 'Not found in any database' } as any);
+      setSelectedAircraftDetail({ ICAO: hex, Registration: hex, error: 'Not found in any database' } as any);
     } catch (err) {
       console.error('Error in fetchAircraftDetails:', err);
-      setSelectedAircraftDetail({ Registration: hex, error: 'Error fetching details' } as any);
+      setSelectedAircraftDetail({ ICAO: hex, Registration: hex, error: 'Error fetching details' } as any);
     }
   };
 
   const fetchData = async () => {
     if (!userLocation) {
       console.log('Waiting for location...');
+      return;
+    }
+    
+    if (!icaoRepo) {
+      console.log('Waiting for ICAO repo to load...');
       return;
     }
     
@@ -203,16 +243,30 @@ function App() {
   useEffect(() => {
     // Load ICAO repo JSON on startup
     console.log('Loading ICAO repository...');
+    setIsLoadingRepo(true);
+    setLoadingProgress(0);
+    
     fetch('/icaorepo.json')
-      .then(res => res.text())
-      .then(text => {
+      .then(res => {
+        setLoadingProgress(20);
+        return res.text();
+      })
+      .then(async text => {
+        // Artificial delay to show progress
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setLoadingProgress(40);
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
         const icaoMap: any = {};
         
         // Try parsing as regular JSON first
         try {
           const data = JSON.parse(text);
+          setLoadingProgress(60);
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
           if (Array.isArray(data)) {
-            data.forEach((entry: any) => {
+            data.forEach((entry: any, index: number) => {
               if (entry.icao) {
                 icaoMap[entry.icao.toUpperCase()] = entry;
               }
@@ -221,9 +275,14 @@ function App() {
             // Already an object
             Object.assign(icaoMap, data);
           }
+          setLoadingProgress(80);
+          await new Promise(resolve => setTimeout(resolve, 300));
         } catch (e) {
           // If regular JSON fails, try NDJSON (newline-delimited JSON)
           console.log('Parsing as NDJSON...');
+          setLoadingProgress(60);
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
           const lines = text.split('\n');
           lines.forEach((line, index) => {
             if (line.trim()) {
@@ -240,13 +299,27 @@ function App() {
               }
             }
           });
+          setLoadingProgress(80);
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
+        
+        setLoadingProgress(90);
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         setIcaoRepo(icaoMap);
         console.log(`✓ ICAO repository loaded (${Object.keys(icaoMap).length} entries)`);
+        
+        // Ensure progress reaches 100% and stays visible
+        setLoadingProgress(100);
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setIsLoadingRepo(false);
       })
       .catch(err => {
         console.error('Failed to load ICAO repo:', err);
+        setLoadingProgress(100);
+        setTimeout(() => {
+          setIsLoadingRepo(false);
+        }, 500);
       });
 
     // Get user's location
@@ -275,12 +348,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!userLocation) return;
+    if (!userLocation || !icaoRepo) return;
     
     fetchData();
     const interval = setInterval(fetchData, REFRESH_INTERVAL * 1000);
     return () => clearInterval(interval);
-  }, [userLocation]);
+  }, [userLocation, radius, icaoRepo]);
 
   useEffect(() => {
     const timer = setInterval(() => setCountdown(prev => (prev > 0 ? prev - 1 : 0)), 1000);
@@ -290,6 +363,19 @@ function App() {
   return (
     <div className="App">
       <div className="radar-bg"></div>
+
+      {isLoadingRepo && (
+        <div className="loading-overlay">
+          <div className="loading-content">
+            <Radio size={80} color="#00ff00" strokeWidth={2} className="loading-icon" />
+            <h1 className="loading-text">LOADING DATABASE</h1>
+            <div className="loading-bar">
+              <div className="loading-progress" style={{ width: `${loadingProgress}%` }}></div>
+            </div>
+            <p className="loading-percentage">{Math.round(loadingProgress)}%</p>
+          </div>
+        </div>
+      )}
 
       {isRevealing && (
         <div className="reveal-overlay reveal-overlay-enter">
@@ -408,29 +494,33 @@ function App() {
         <div className="details-card details-card-enter">
           {selectedAircraftDetail.error ? (
             <div className="detail-item detail-item-1">
-              <p>Aircraft <strong>{selectedAircraftDetail.Registration}</strong> not found.</p>
+              <p>Aircraft <strong><TypewriterText text={selectedAircraftDetail.Registration} speed={40} /></strong> <TypewriterText text={selectedAircraftDetail.error} speed={30} /></p>
             </div>
           ) : (
             <>
               <div className="card-header card-header-enter">
                 <Plane size={32} color="#00ff00" strokeWidth={2.5} style={{ filter: 'drop-shadow(0 0 8px rgba(0, 255, 0, 0.6))' }} />
-                <h2>AIRCRAFT IDENTIFIED</h2>
+                <h2><TypewriterText text="AIRCRAFT IDENTIFIED" speed={80} /></h2>
               </div>
               <div className="detail-item detail-item-1">
-                <FileText size={24} color="#00ff00" strokeWidth={2} />
-                <p><strong>Registration:</strong> {selectedAircraftDetail.Registration}</p>
+                <Radio size={24} color="#00ff00" strokeWidth={2} />
+                <p><strong>ICAO:</strong> <TypewriterText text={selectedAircraftDetail.ICAO} speed={60} /></p>
               </div>
               <div className="detail-item detail-item-2">
-                <Plane size={24} color="#00ff00" strokeWidth={2} />
-                <p><strong>Type:</strong> {selectedAircraftDetail.Type}</p>
+                <FileText size={24} color="#00ff00" strokeWidth={2} />
+                <p><strong>Registration:</strong> <TypewriterText text={selectedAircraftDetail.Registration} speed={60} /></p>
               </div>
               <div className="detail-item detail-item-3">
-                <Factory size={24} color="#00ff00" strokeWidth={2} />
-                <p><strong>Manufacturer:</strong> {selectedAircraftDetail.Manufacturer}</p>
+                <Plane size={24} color="#00ff00" strokeWidth={2} />
+                <p><strong>Type:</strong> <TypewriterText text={selectedAircraftDetail.Type} speed={60} /></p>
               </div>
               <div className="detail-item detail-item-4">
+                <Factory size={24} color="#00ff00" strokeWidth={2} />
+                <p><strong>Manufacturer:</strong> <TypewriterText text={selectedAircraftDetail.Manufacturer} speed={60} /></p>
+              </div>
+              <div className="detail-item detail-item-5">
                 <Users size={24} color="#00ff00" strokeWidth={2} />
-                <p><strong>Owner:</strong> {selectedAircraftDetail.RegisteredOwners}</p>
+                <p><strong>Owner:</strong> <TypewriterText text={selectedAircraftDetail.RegisteredOwners} speed={60} /></p>
               </div>
             </>
           )}
