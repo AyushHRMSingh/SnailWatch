@@ -39,7 +39,7 @@ interface Aircraft {
   flight?: string;
   lat: number;
   lon: number;
-  alt_baro: number;
+  alt_baro: number | 'ground';
   gs: number;
   mach?: number;
 }
@@ -51,7 +51,7 @@ interface AircraftDetail {
   Type: string;
   RegisteredOwners: string;
   Callsign?: string;
-  Altitude?: number;
+  Altitude?: number | 'ground';
   Speed?: number; // Speed in km/h converted from Mach
   error?: string;
 }
@@ -86,9 +86,10 @@ function App() {
   const map = useRef<maplibregl.Map | null>(null);
   const planeMarker = useRef<maplibregl.Marker | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const previousLocation = useRef<{ lat: number; lon: number } | null>(null);
   const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
 
-  const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number, mach?: number) => {
+  const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number | 'ground', mach?: number) => {
     // Convert Mach to km/h (Mach 1 ≈ 1234.8 km/h at sea level)
     const speedKmh = mach ? Math.round(mach * 1234.8) : undefined;
     try {
@@ -435,8 +436,25 @@ function App() {
     const selectedAircraft = aircraft.find(ac => ac.hex === selectedAircraftDetail.ICAO);
     if (!selectedAircraft) return;
 
-    // Only recreate map if it doesn't exist
-    if (!map.current) {
+    // Check if location has changed
+    const locationChanged = previousLocation.current && 
+      (previousLocation.current.lat !== userLocation.lat || 
+       previousLocation.current.lon !== userLocation.lon);
+
+    // Recreate map if it doesn't exist OR if location changed
+    if (!map.current || locationChanged) {
+      // Remove old map if it exists
+      if (map.current) {
+        if (planeMarker.current) {
+          planeMarker.current.remove();
+          planeMarker.current = null;
+        }
+        map.current.remove();
+        map.current = null;
+      }
+
+      // Update previous location
+      previousLocation.current = { lat: userLocation.lat, lon: userLocation.lon };
       // Calculate bounds based on scanner range
       const radiusInMeters = parseFloat(radius) * 1852; // Convert NM to meters
       
@@ -749,7 +767,7 @@ function App() {
               {selectedAircraftDetail.Altitude !== undefined && (
                 <div className="detail-item detail-item-7">
                   <Mountain size={24} color="#00ff00" strokeWidth={2} />
-                  <p><strong>Altitude:</strong> <TypewriterText text={`${Math.round(selectedAircraftDetail.Altitude)} ft`} speed={60} /></p>
+                  <p><strong>Altitude:</strong> <TypewriterText text={selectedAircraftDetail.Altitude === 'ground' ? 'On Ground' : `${Math.round(selectedAircraftDetail.Altitude)} ft`} speed={60} /></p>
                 </div>
               )}
               {selectedAircraftDetail.Speed !== undefined && (

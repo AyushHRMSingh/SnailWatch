@@ -237,7 +237,7 @@
 .card-content-wrapper {
   display: flex;
   gap: 2rem;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .card-info {
