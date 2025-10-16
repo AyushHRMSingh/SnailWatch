@@ -9,6 +9,7 @@
   background: #000800;
 }
 
+
 .radar-bg {
   position: absolute;
   top: 50%;
@@ -215,7 +216,7 @@
   position: relative;
   z-index: 2;
   margin: 2rem auto;
-  max-width: 700px;
+  max-width: 1200px;
   width: calc(100% - 4rem);
   background: rgba(0,32,0,0.98);
   border: 3px solid #00ff00;
@@ -231,6 +232,36 @@
   backdrop-filter: blur(10px);
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.card-content-wrapper {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.card-info {
+  flex: 1;
+  min-width: 0;
+}
+.card-map {
+  flex: 1;
+  min-width: 0;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-map .map-container {
+  width: 500px;
+  height: 500px;
+  border: 3px solid rgba(0,255,0,0.8);
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 
+    0 0 30px rgba(0,255,0,0.5),
+    inset 0 0 20px rgba(0,255,0,0.2);
 }
 
 .details-card-enter {
@@ -469,6 +500,19 @@
 
 /* Mobile Optimizations */
 @media (max-width: 768px) {
+  .card-content-wrapper {
+    flex-direction: column;
+  }
+
+  .card-map {
+    height: 350px;
+  }
+
+  .card-map .map-container {
+    width: 300px;
+    height: 300px;
+  }
+
   .App-header {
     margin-top: 1rem;
   }

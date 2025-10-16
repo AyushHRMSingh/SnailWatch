@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { FileText, Plane, Factory, Users, Radio, Settings, X, Navigation, Mountain, Gauge, ExternalLink } from 'lucide-react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
 // Typewriter hook
 const useTypewriter = (text: string, speed: number = 50) => {
@@ -80,6 +82,9 @@ function App() {
   const [loadingProgress, setLoadingProgress] = useState(0);
 
   const previousAircraft = useRef(new Set<string>());
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<maplibregl.Map | null>(null);
+  const planeMarker = useRef<maplibregl.Marker | null>(null);
   const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
 
   const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number, mach?: number) => {
@@ -414,6 +419,136 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Initialize map when aircraft is selected
+  useEffect(() => {
+    if (!mapContainer.current || !userLocation || !selectedAircraftDetail) return;
+
+    // Find the selected aircraft in the aircraft list to get its coordinates
+    const selectedAircraft = aircraft.find(ac => ac.hex === selectedAircraftDetail.ICAO);
+    if (!selectedAircraft) return;
+
+    // Remove old map if exists
+    if (map.current) {
+      map.current.remove();
+      map.current = null;
+    }
+
+    // Calculate zoom level so the circle edge matches the scanner range
+    // Map container is 500px diameter, so radius is 250px
+    // We want the scanner range to fit exactly at the edge
+    const radiusInMeters = parseFloat(radius) * 1852; // Convert NM to meters
+    const mapRadiusPixels = 250; // Half of 500px container
+    
+    // Calculate zoom level: zoom = log2(mapWidth * 156543.03 / (distance * cos(lat)))
+    // Simplified: at equator, 1 pixel = 156543.03 / (2^zoom) meters
+    const metersPerPixel = radiusInMeters / mapRadiusPixels;
+    const zoom = Math.log2(156543.03 * Math.cos(userLocation.lat * Math.PI / 180) / metersPerPixel);
+
+    // Create new map centered on user's location
+    const mapInstance = new maplibregl.Map({
+      container: mapContainer.current,
+      style: '/style.json',
+      center: [userLocation.lon, userLocation.lat],
+      zoom: zoom,
+    });
+
+    map.current = mapInstance;
+
+    // Wait for map to load before adding marker and range circle
+    mapInstance.on('load', () => {
+      // Convert nautical miles to meters (1 NM = 1852 meters)
+      const radiusInMeters = parseFloat(radius) * 1852;
+      
+      // Create a circle representing the scanner range
+      // Calculate circle points
+      const points = 64;
+      const coords: [number, number][] = [];
+      for (let i = 0; i < points; i++) {
+        const angle = (i / points) * 2 * Math.PI;
+        const dx = radiusInMeters * Math.cos(angle);
+        const dy = radiusInMeters * Math.sin(angle);
+        
+        // Convert meters to degrees (approximate)
+        const deltaLat = dy / 111320;
+        const deltaLon = dx / (111320 * Math.cos(userLocation.lat * Math.PI / 180));
+        
+        coords.push([
+          userLocation.lon + deltaLon,
+          userLocation.lat + deltaLat
+        ]);
+      }
+      // Close the circle
+      coords.push(coords[0]);
+
+      // Add the circle as a source and layer
+      mapInstance.addSource('scanner-range', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [coords]
+          },
+          properties: {}
+        }
+      });
+
+      mapInstance.addLayer({
+        id: 'scanner-range-fill',
+        type: 'fill',
+        source: 'scanner-range',
+        paint: {
+          'fill-color': '#00ff00',
+          'fill-opacity': 0.1
+        }
+      });
+
+      mapInstance.addLayer({
+        id: 'scanner-range-outline',
+        type: 'line',
+        source: 'scanner-range',
+        paint: {
+          'line-color': '#00ff00',
+          'line-width': 2,
+          'line-opacity': 0.8
+        }
+      });
+
+      // Add user location marker
+      const userMarkerEl = document.createElement('div');
+      userMarkerEl.className = 'user-marker';
+      userMarkerEl.innerHTML = '📍';
+      userMarkerEl.style.fontSize = '24px';
+      
+      new maplibregl.Marker({ element: userMarkerEl })
+        .setLngLat([userLocation.lon, userLocation.lat])
+        .addTo(mapInstance);
+
+      // Create a custom plane icon
+      const el = document.createElement('div');
+      el.className = 'plane-marker';
+      el.innerHTML = '✈️';
+      el.style.fontSize = '24px';
+      el.style.cursor = 'pointer';
+
+      // Add plane marker at aircraft's location
+      planeMarker.current = new maplibregl.Marker({ element: el })
+        .setLngLat([selectedAircraft.lon, selectedAircraft.lat])
+        .addTo(mapInstance);
+    });
+
+    return () => {
+      if (planeMarker.current) {
+        planeMarker.current.remove();
+        planeMarker.current = null;
+      }
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, [selectedAircraftDetail, aircraft, userLocation, radius]);
+
   return (
     <div className="App">
       <div className="radar-bg"></div>
@@ -546,6 +681,8 @@ function App() {
 
       {selectedAircraftDetail && (
         <div className="details-card details-card-enter">
+          <div className="card-content-wrapper">
+            <div className="card-info">
           {selectedAircraftDetail.error ? (
             <div className="detail-item detail-item-1">
               <p>Aircraft <strong><TypewriterText text={selectedAircraftDetail.Registration} speed={40} /></strong> <TypewriterText text={selectedAircraftDetail.error} speed={30} /></p>
@@ -604,7 +741,12 @@ function App() {
                 </div>
               )}
             </>
-          )}
+            )}
+            </div>
+            <div className="card-map">
+              <div ref={mapContainer} className="map-container" id="mapa" />
+            </div>
+          </div>
         </div>
       )}
     </div>
