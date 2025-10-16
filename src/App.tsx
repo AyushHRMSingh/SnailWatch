@@ -278,7 +278,7 @@ function App() {
           await new Promise(resolve => setTimeout(resolve, 300));
           
           if (Array.isArray(data)) {
-            data.forEach((entry: any, index: number) => {
+            data.forEach((entry: any) => {
               if (entry.icao) {
                 icaoMap[entry.icao.toUpperCase()] = entry;
               }
