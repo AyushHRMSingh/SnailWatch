@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://opendata.adsb.fi/api/v2/:path*"
+    },
+    {
+      "source": "/details-api/:path*",
+      "destination": "https://hexdb.io/api/v1/:path*"
+    }
+  ]
+}
