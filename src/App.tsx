@@ -89,9 +89,14 @@ function App() {
   const previousLocation = useRef<{ lat: number; lon: number } | null>(null);
   const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
 
-  const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number | 'ground', mach?: number) => {
-    // Convert Mach to km/h (Mach 1 ≈ 1234.8 km/h at sea level)
-    const speedKmh = mach ? Math.round(mach * 1234.8) : undefined;
+  const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number | 'ground', mach?: number, groundSpeed?: number) => {
+    // Convert Mach to km/h (Mach 1 ≈ 1234.8 km/h at sea level), or use ground speed (knots to km/h)
+    let speedKmh: number | undefined;
+    if (mach) {
+      speedKmh = Math.round(mach * 1234.8);
+    } else if (groundSpeed) {
+      speedKmh = Math.round(groundSpeed * 1.852); // Convert knots to km/h
+    }
     try {
       console.log('Fetching details for hex:', hex);
       
@@ -258,19 +263,22 @@ function App() {
       if (newEntries.length > 0) {
         console.log('New aircraft detected:', newEntries);
         
-        // Play beep sound
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0; // Reset to start
-          audioRef.current.play().catch(err => console.log('Audio play failed:', err));
-        }
-        
         const newAircraft = newEntries[0];
         fetchAircraftDetails(
           newAircraft.hex.replace('~', ''),
           newAircraft.flight?.trim(),
           newAircraft.alt_baro,
-          newAircraft.mach
+          newAircraft.mach,
+          newAircraft.gs
         );
+        
+        // Play beep sound with delay to sync with reveal animation
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0; // Reset to start
+            audioRef.current.play().catch(err => console.log('Audio play failed:', err));
+          }
+        }, 300); // 300ms delay to sync with reveal animation
       }
 
       setAircraft(currentAircraft);

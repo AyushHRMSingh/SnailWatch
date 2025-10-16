@@ -500,12 +500,24 @@
 
 /* Mobile Optimizations */
 @media (max-width: 768px) {
+  .App {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
   .card-content-wrapper {
     flex-direction: column;
+    align-items: center;
+  }
+
+  .card-info {
+    width: 100%;
   }
 
   .card-map {
-    height: 350px;
+    height: auto;
+    width: 100%;
+    margin-top: 1rem;
   }
 
   .card-map .map-container {
