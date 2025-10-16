@@ -67,6 +67,29 @@
   transform: rotate(90deg) scale(1.1);
 }
 
+.sound-toggle-button {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  background: rgba(0,32,0,0.9);
+  border: 2px solid #00ff00;
+  border-radius: 50%;
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(0,255,0,0.5);
+}
+
+.sound-toggle-button:hover {
+  background: rgba(0,64,0,0.95);
+  box-shadow: 0 0 30px rgba(0,255,0,0.8);
+  transform: scale(1.1);
+}
+
 .settings-overlay {
   position: fixed;
   inset: 0;
@@ -541,6 +564,17 @@
   }
 
   .settings-button svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .sound-toggle-button {
+    bottom: 1rem;
+    right: 1rem;
+    padding: 0.6rem;
+  }
+
+  .sound-toggle-button svg {
     width: 20px;
     height: 20px;
   }

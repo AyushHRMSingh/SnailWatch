@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
-import { FileText, Plane, Factory, Users, Radio, Settings, X, Navigation, Mountain, Gauge, ExternalLink } from 'lucide-react';
+import { FileText, Plane, Factory, Users, Radio, Settings, X, Navigation, Mountain, Gauge, ExternalLink, Volume2, VolumeX } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -43,6 +43,8 @@ interface Aircraft {
   gs: number;
   mach?: number;
   track?: number; // Heading in degrees (0 = North)
+  calc_track?: number; // Calculated track as fallback
+  dir?: number; // Direction as another fallback
 }
 
 interface AircraftDetail {
@@ -75,12 +77,13 @@ function App() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [icaoRepo, setIcaoRepo] = useState<any>(LOAD_LOCAL_DATABASE ? null : {});
   const [showSettings, setShowSettings] = useState(false);
-  const [customLat, setCustomLat] = useState('');
-  const [customLon, setCustomLon] = useState('');
-  const [radius, setRadius] = useState('20');
-  const [useCustomLocation, setUseCustomLocation] = useState(false);
+  const [customLat, setCustomLat] = useState(() => localStorage.getItem('customLat') || '');
+  const [customLon, setCustomLon] = useState(() => localStorage.getItem('customLon') || '');
+  const [radius, setRadius] = useState(() => localStorage.getItem('radius') || '20');
+  const [useCustomLocation, setUseCustomLocation] = useState(() => localStorage.getItem('useCustomLocation') === 'true');
   const [isLoadingRepo, setIsLoadingRepo] = useState(LOAD_LOCAL_DATABASE);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('soundEnabled') !== 'false'); // Default true
 
   const previousAircraft = useRef(new Set<string>());
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -88,6 +91,7 @@ function App() {
   const planeMarker = useRef<maplibregl.Marker | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousLocation = useRef<{ lat: number; lon: number } | null>(null);
+  const previousRadius = useRef<string | null>(null);
   const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
 
   const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number | 'ground', mach?: number, groundSpeed?: number) => {
@@ -275,7 +279,7 @@ function App() {
         
         // Play beep sound with delay to sync with reveal animation
         setTimeout(() => {
-          if (audioRef.current) {
+          if (audioRef.current && soundEnabled) {
             audioRef.current.currentTime = 0; // Reset to start
             audioRef.current.play().catch(err => console.log('Audio play failed:', err));
           }
@@ -445,13 +449,14 @@ function App() {
     const selectedAircraft = aircraft.find(ac => ac.hex === selectedAircraftDetail.ICAO);
     if (!selectedAircraft) return;
 
-    // Check if location has changed
+    // Check if location or radius has changed
     const locationChanged = previousLocation.current && 
       (previousLocation.current.lat !== userLocation.lat || 
        previousLocation.current.lon !== userLocation.lon);
+    const radiusChanged = previousRadius.current && previousRadius.current !== radius;
 
-    // Recreate map if it doesn't exist OR if location changed
-    if (!map.current || locationChanged) {
+    // Recreate map if it doesn't exist OR if location/radius changed
+    if (!map.current || locationChanged || radiusChanged) {
       // Remove old map if it exists
       if (map.current) {
         if (planeMarker.current) {
@@ -462,8 +467,9 @@ function App() {
         map.current = null;
       }
 
-      // Update previous location
+      // Update previous location and radius
       previousLocation.current = { lat: userLocation.lat, lon: userLocation.lon };
+      previousRadius.current = radius;
       // Calculate bounds based on scanner range
       const radiusInMeters = parseFloat(radius) * 1852; // Convert NM to meters
       
@@ -565,13 +571,14 @@ function App() {
       el.innerHTML = '✈️';
       el.style.fontSize = '24px';
       el.style.cursor = 'pointer';
-      // Rotate based on track (heading)
-      if (selectedAircraft.track !== undefined) {
-        el.style.transform = `rotate(${selectedAircraft.track}deg)`;
+      // Rotate based on track (heading), use calc_track or dir as fallback
+      const heading = selectedAircraft.track ?? selectedAircraft.calc_track ?? selectedAircraft.dir;
+      if (heading !== undefined) {
+        el.style.transform = `rotate(${heading}deg)`;
       }
 
       // Add plane marker at aircraft's location
-      planeMarker.current = new maplibregl.Marker({ element: el, rotation: selectedAircraft.track || 0 })
+      planeMarker.current = new maplibregl.Marker({ element: el, rotation: heading || 0 })
         .setLngLat([selectedAircraft.lon, selectedAircraft.lat])
         .addTo(mapInstance);
       });
@@ -587,12 +594,13 @@ function App() {
         el.innerHTML = '✈️';
         el.style.fontSize = '24px';
         el.style.cursor = 'pointer';
-        // Rotate based on track (heading)
-        if (selectedAircraft.track !== undefined) {
-          el.style.transform = `rotate(${selectedAircraft.track}deg)`;
+        // Rotate based on track (heading), use calc_track or dir as fallback
+        const heading = selectedAircraft.track ?? selectedAircraft.calc_track ?? selectedAircraft.dir;
+        if (heading !== undefined) {
+          el.style.transform = `rotate(${heading}deg)`;
         }
 
-        planeMarker.current = new maplibregl.Marker({ element: el, rotation: selectedAircraft.track || 0 })
+        planeMarker.current = new maplibregl.Marker({ element: el, rotation: heading || 0 })
           .setLngLat([selectedAircraft.lon, selectedAircraft.lat])
           .addTo(map.current);
       }
@@ -634,6 +642,18 @@ function App() {
         aria-label="Settings"
       >
         <Settings size={24} color="#00ff00" />
+      </button>
+
+      <button 
+        className="sound-toggle-button"
+        onClick={() => {
+          const newSoundState = !soundEnabled;
+          setSoundEnabled(newSoundState);
+          localStorage.setItem('soundEnabled', newSoundState.toString());
+        }}
+        aria-label="Toggle Sound"
+      >
+        {soundEnabled ? <Volume2 size={24} color="#00ff00" /> : <VolumeX size={24} color="#ff0000" />}
       </button>
 
       {showSettings && (
@@ -698,6 +718,12 @@ function App() {
               <button 
                 className="apply-button"
                 onClick={() => {
+                  // Save settings to localStorage
+                  localStorage.setItem('customLat', customLat);
+                  localStorage.setItem('customLon', customLon);
+                  localStorage.setItem('radius', radius);
+                  localStorage.setItem('useCustomLocation', useCustomLocation.toString());
+                  
                   if (useCustomLocation && customLat && customLon) {
                     const lat = parseFloat(customLat);
                     const lon = parseFloat(customLon);
@@ -711,7 +737,7 @@ function App() {
                   setShowSettings(false);
                 }}
               >
-                APPLY
+                Apply
               </button>
             </div>
           </div>
