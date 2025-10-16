@@ -544,19 +544,24 @@ function App() {
         .setLngLat([selectedAircraft.lon, selectedAircraft.lat])
         .addTo(mapInstance);
       });
-    } else {
-      // Map exists, just update the plane marker
+    } else if (map.current) {
+      // Map exists, update or create the plane marker
       if (planeMarker.current) {
+        // Update existing marker position
         planeMarker.current.setLngLat([selectedAircraft.lon, selectedAircraft.lat]);
+      } else {
+        // Create new marker if it doesn't exist
+        const el = document.createElement('div');
+        el.className = 'plane-marker';
+        el.innerHTML = '✈️';
+        el.style.fontSize = '24px';
+        el.style.cursor = 'pointer';
+
+        planeMarker.current = new maplibregl.Marker({ element: el })
+          .setLngLat([selectedAircraft.lon, selectedAircraft.lat])
+          .addTo(map.current);
       }
     }
-
-    return () => {
-      if (planeMarker.current) {
-        planeMarker.current.remove();
-        planeMarker.current = null;
-      }
-    };
   }, [selectedAircraftDetail, aircraft, userLocation, radius]);
 
   return (
