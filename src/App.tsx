@@ -36,6 +36,7 @@ interface Aircraft {
   hex: string;
   r: string;
   t: string;
+  desc?: string;
   flight?: string;
   lat: number;
   lon: number;
@@ -57,6 +58,24 @@ interface AircraftDetail {
   Altitude?: number | 'ground';
   Speed?: number; // Speed in km/h converted from Mach
   error?: string;
+  // Route information
+  Origin?: {
+    name: string;
+    iata_code: string;
+    municipality: string;
+    country_name: string;
+  };
+  Destination?: {
+    name: string;
+    iata_code: string;
+    municipality: string;
+    country_name: string;
+  };
+  Airline?: {
+    name: string;
+    iata: string;
+    country: string;
+  };
 }
 
 const TypewriterText = ({ text, speed = 50 }: { text: string; speed?: number }) => {
@@ -94,7 +113,7 @@ function App() {
   const previousRadius = useRef<string | null>(null);
   const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
 
-  const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number | 'ground', mach?: number, groundSpeed?: number) => {
+  const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number | 'ground', mach?: number, groundSpeed?: number, aircraftData?: Aircraft) => {
     // Convert Mach to km/h (Mach 1 ≈ 1234.8 km/h at sea level), or use ground speed (knots to km/h)
     let speedKmh: number | undefined;
     if (mach) {
@@ -102,38 +121,43 @@ function App() {
     } else if (groundSpeed) {
       speedKmh = Math.round(groundSpeed * 1.852); // Convert knots to km/h
     }
-    try {
-      console.log('Fetching details for hex:', hex);
+    
+    // IMMEDIATELY set default values from initial aircraft data
+    if (aircraftData) {
+      const defaultDetails: AircraftDetail = {
+        ICAO: hex,
+        Registration: aircraftData.r || hex,
+        Manufacturer: 'Loading...',
+        Type: aircraftData.desc || aircraftData.t || 'Unknown',
+        RegisteredOwners: 'Loading...',
+        Callsign: callsign,
+        Altitude: altitude,
+        Speed: speedKmh,
+      };
       
-      // Try primary API first
+      // Show reveal animation and set default data immediately
+      setIsRevealing(true);
+      setSelectedAircraftDetail(defaultDetails);
+      setTimeout(() => {
+        setIsRevealing(false);
+      }, 1500);
+    }
+    
+    try {
+      console.log('Fetching details for hex:', hex, 'callsign:', callsign);
+      
+      // Try adsbdb.com as PRIMARY API
       try {
-        const res = await fetch(`/details-api/aircraft/${hex}`);
-        if (res.ok) {
-          const details: AircraftDetail = await res.json();
-          details.ICAO = hex;
-          details.Callsign = callsign;
-          details.Altitude = altitude;
-          details.Speed = speedKmh;
-          setIsRevealing(true);
-          setTimeout(() => {
-            setIsRevealing(false);
-            setSelectedAircraftDetail(details);
-          }, 1500);
-          console.log('✓ Primary API succeeded');
-          return;
-        }
-        console.log('Primary API failed, trying fallbacks...');
-      } catch (err) {
-        console.log('Primary API error:', err);
-      }
-
-      // Try adsbdb.com
-      try {
-        console.log('Trying adsbdb.com...');
-        const adsbRes = await fetch(`https://api.adsbdb.com/v0/aircraft/${hex}`);
+        console.log('Trying adsbdb.com (PRIMARY)...');
+        const url = callsign 
+          ? `https://api.adsbdb.com/v0/aircraft/${hex}?callsign=${callsign.trim()}`
+          : `https://api.adsbdb.com/v0/aircraft/${hex}`;
+        const adsbRes = await fetch(url);
         if (adsbRes.ok) {
           const adsbData = await adsbRes.json();
           const aircraft = adsbData.response?.aircraft;
+          const flightroute = adsbData.response?.flightroute;
+          
           if (aircraft) {
             const details: AircraftDetail = {
               ICAO: hex,
@@ -145,18 +169,62 @@ function App() {
               Altitude: altitude,
               Speed: speedKmh,
             };
-            setIsRevealing(true);
-            setTimeout(() => {
-              setIsRevealing(false);
-              setSelectedAircraftDetail(details);
-            }, 1500);
-            console.log('✓ adsbdb.com succeeded');
+            
+            // Add route information if available
+            if (flightroute) {
+              if (flightroute.origin) {
+                details.Origin = {
+                  name: flightroute.origin.name,
+                  iata_code: flightroute.origin.iata_code,
+                  municipality: flightroute.origin.municipality,
+                  country_name: flightroute.origin.country_name,
+                };
+              }
+              if (flightroute.destination) {
+                details.Destination = {
+                  name: flightroute.destination.name,
+                  iata_code: flightroute.destination.iata_code,
+                  municipality: flightroute.destination.municipality,
+                  country_name: flightroute.destination.country_name,
+                };
+              }
+              if (flightroute.airline) {
+                details.Airline = {
+                  name: flightroute.airline.name,
+                  iata: flightroute.airline.iata,
+                  country: flightroute.airline.country,
+                };
+              }
+            }
+            
+            // OVERWRITE default data immediately (no reveal animation)
+            setSelectedAircraftDetail(details);
+            console.log('✓ adsbdb.com (PRIMARY) succeeded - data overwritten');
             return;
           }
         }
-        console.log('adsbdb.com failed, trying hexdb.io...');
+        console.log('adsbdb.com failed, trying fallbacks...');
       } catch (err) {
         console.log('adsbdb.com error:', err);
+      }
+
+      // Try custom details API as fallback
+      try {
+        const res = await fetch(`/details-api/aircraft/${hex}`);
+        if (res.ok) {
+          const details: AircraftDetail = await res.json();
+          details.ICAO = hex;
+          details.Callsign = callsign;
+          details.Altitude = altitude;
+          details.Speed = speedKmh;
+          // OVERWRITE default data immediately
+          setSelectedAircraftDetail(details);
+          console.log('✓ Custom API succeeded - data overwritten');
+          return;
+        }
+        console.log('Custom API failed, trying hexdb.io...');
+      } catch (err) {
+        console.log('Custom API error:', err);
       }
 
       // Try hexdb.io
@@ -176,12 +244,9 @@ function App() {
               Altitude: altitude,
               Speed: speedKmh,
             };
-            setIsRevealing(true);
-            setTimeout(() => {
-              setIsRevealing(false);
-              setSelectedAircraftDetail(details);
-            }, 1500);
-            console.log('✓ hexdb.io succeeded');
+            // OVERWRITE default data immediately
+            setSelectedAircraftDetail(details);
+            console.log('✓ hexdb.io succeeded - data overwritten');
             return;
           }
         }
@@ -218,13 +283,9 @@ function App() {
             Altitude: altitude,
             Speed: speedKmh,
           };
-          
-          setIsRevealing(true);
-          setTimeout(() => {
-            setIsRevealing(false);
-            setSelectedAircraftDetail(details);
-          }, 1500);
-          console.log('✓ Local ICAO repo succeeded:', details);
+          // OVERWRITE default data immediately
+          setSelectedAircraftDetail(details);
+          console.log('✓ Local ICAO repo succeeded - data overwritten');
           return;
         } else {
           console.log('No entry found in local repo for hex:', hexUpper);
@@ -233,12 +294,12 @@ function App() {
         console.log('ICAO repo not loaded yet');
       }
 
-      // All sources failed
-      console.log('✗ All sources failed');
-      setSelectedAircraftDetail({ ICAO: hex, Registration: hex, error: 'Not found in any database' } as any);
+      // All sources failed - keep the original default data that was already set
+      console.log('✗ All sources failed - keeping default data from initial aircraft response');
+      // Don't overwrite - the default data from aircraftData is already displayed
     } catch (err) {
       console.error('Error in fetchAircraftDetails:', err);
-      setSelectedAircraftDetail({ ICAO: hex, Registration: hex, error: 'Error fetching details' } as any);
+      // Don't overwrite - keep the default data that was already set
     }
   };
 
@@ -274,7 +335,8 @@ function App() {
           newAircraft.flight?.trim(),
           newAircraft.alt_baro,
           newAircraft.mach,
-          newAircraft.gs
+          newAircraft.gs,
+          newAircraft  // Pass the full aircraft object for default data
         );
         
         // Play beep sound with delay to sync with reveal animation
@@ -389,7 +451,24 @@ function App() {
 
   // Separate useEffect for geolocation
   useEffect(() => {
-    // Get user's location
+    // Check if custom location is set in localStorage
+    const savedUseCustom = localStorage.getItem('useCustomLocation') === 'true';
+    const savedLat = localStorage.getItem('customLat');
+    const savedLon = localStorage.getItem('customLon');
+    
+    if (savedUseCustom && savedLat && savedLon) {
+      // Load from custom location
+      const lat = parseFloat(savedLat);
+      const lon = parseFloat(savedLon);
+      if (!isNaN(lat) && !isNaN(lon)) {
+        console.log('Loading custom location from localStorage:', lat, lon);
+        setUserLocation({ lat, lon });
+        setLocationError(null);
+        return;
+      }
+    }
+    
+    // Otherwise, get user's location from geolocation
     if ('geolocation' in navigator) {
       console.log('Requesting geolocation...');
       navigator.geolocation.getCurrentPosition(
@@ -418,7 +497,6 @@ function App() {
     } else {
       console.error('Geolocation not supported');
       setLocationError('Geolocation not supported - Using default location (LAX)');
-      // Fallback to default location
       setUserLocation({ lat: 33.9416, lon: -118.4085 });
     }
   }, []);
@@ -725,6 +803,7 @@ function App() {
                   localStorage.setItem('useCustomLocation', useCustomLocation.toString());
                   
                   if (useCustomLocation && customLat && customLon) {
+                    // Use custom location
                     const lat = parseFloat(customLat);
                     const lon = parseFloat(customLon);
                     if (!isNaN(lat) && !isNaN(lon)) {
@@ -732,6 +811,25 @@ function App() {
                       setLocationError(null);
                     } else {
                       setLocationError('Invalid coordinates');
+                    }
+                  } else if (!useCustomLocation) {
+                    // Switch back to automatic geolocation
+                    if ('geolocation' in navigator) {
+                      navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                          const { latitude, longitude } = position.coords;
+                          setUserLocation({ lat: latitude, lon: longitude });
+                          setLocationError(null);
+                        },
+                        (error) => {
+                          console.error('Geolocation error:', error);
+                          setLocationError('Could not get location - Using default (LAX)');
+                          setUserLocation({ lat: 33.9416, lon: -118.4085 });
+                        }
+                      );
+                    } else {
+                      setLocationError('Geolocation not supported');
+                      setUserLocation({ lat: 33.9416, lon: -118.4085 });
                     }
                   }
                   setShowSettings(false);
@@ -754,8 +852,6 @@ function App() {
         {locationError && (
           <p style={{ fontSize: '0.9rem', color: '#ffaa00' }}>⚠️ {locationError}</p>
         )}
-        <p>Tracking {aircraft.length} aircraft</p>
-        <p className="countdown">Next refresh in {countdown}s</p>
       </header>
 
       {selectedAircraftDetail && (
@@ -769,56 +865,74 @@ function App() {
           ) : (
             <>
               <div className="card-header card-header-enter">
-                <Plane size={32} color="#00ff00" strokeWidth={2.5} style={{ filter: 'drop-shadow(0 0 8px rgba(0, 255, 0, 0.6))' }} />
-                <h2><TypewriterText text="AIRCRAFT IDENTIFIED" speed={80} /></h2>
-                <a 
-                  href={`https://www.flightradar24.com/${selectedAircraftDetail.Registration.toLowerCase().replace(/[^a-z0-9]/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ marginLeft: '10px', display: 'inline-flex', alignItems: 'center' }}
-                  title="View on FlightRadar24"
-                >
-                  <ExternalLink size={24} color="#00ff00" strokeWidth={2} />
-                </a>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Plane size={32} color="#00ff00" strokeWidth={2.5} style={{ filter: 'drop-shadow(0 0 8px rgba(0, 255, 0, 0.6))' }} />
+                  <h2><TypewriterText text="AIRCRAFT IDENTIFIED" speed={80} /></h2>
+                  <a 
+                    href={`https://www.flightradar24.com/${selectedAircraftDetail.Registration.toLowerCase().replace(/[^a-z0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ marginLeft: '10px', display: 'inline-flex', alignItems: 'center' }}
+                    title="View on FlightRadar24"
+                  >
+                    <ExternalLink size={24} color="#00ff00" strokeWidth={2} />
+                  </a>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.3rem', fontSize: '0.85rem', opacity: 0.7 }}>
+                  <div>⏱ {countdown}s</div>
+                  <div>Tracking: {aircraft.length}</div>
+                </div>
               </div>
-              <div className="detail-item detail-item-1">
-                <Radio size={24} color="#00ff00" strokeWidth={2} />
-                <p><strong>ICAO:</strong> <TypewriterText text={selectedAircraftDetail.ICAO} speed={60} /></p>
-              </div>
-              <div className="detail-item detail-item-2">
+              {selectedAircraftDetail.Origin && selectedAircraftDetail.Destination && (
+                <div className="detail-item detail-item-1">
+                  <Navigation size={24} color="#00ff00" strokeWidth={2} />
+                  <p><strong>Route:</strong> <TypewriterText text={`${selectedAircraftDetail.Origin.iata_code} → ${selectedAircraftDetail.Destination.iata_code}`} speed={60} /></p>
+                </div>
+              )}
+              {selectedAircraftDetail.Airline && (
+                <div className="detail-item detail-item-2">
+                  <Plane size={24} color="#00ff00" strokeWidth={2} />
+                  <p><strong>Airline:</strong> <TypewriterText text={`${selectedAircraftDetail.Airline.name} (${selectedAircraftDetail.Airline.iata})`} speed={60} /></p>
+                </div>
+              )}
+              <div className="detail-item detail-item-3">
                 <FileText size={24} color="#00ff00" strokeWidth={2} />
                 <p><strong>Registration:</strong> <TypewriterText text={selectedAircraftDetail.Registration} speed={60} /></p>
               </div>
-              <div className="detail-item detail-item-3">
+              <div className="detail-item detail-item-4">
                 <Plane size={24} color="#00ff00" strokeWidth={2} />
                 <p><strong>Type:</strong> <TypewriterText text={selectedAircraftDetail.Type} speed={60} /></p>
               </div>
-              <div className="detail-item detail-item-4">
+              <div className="detail-item detail-item-5">
                 <Factory size={24} color="#00ff00" strokeWidth={2} />
                 <p><strong>Manufacturer:</strong> <TypewriterText text={selectedAircraftDetail.Manufacturer} speed={60} /></p>
               </div>
-              <div className="detail-item detail-item-5">
+              <div className="detail-item detail-item-6">
                 <Users size={24} color="#00ff00" strokeWidth={2} />
                 <p><strong>Owner:</strong> <TypewriterText text={selectedAircraftDetail.RegisteredOwners} speed={60} /></p>
               </div>
               {selectedAircraftDetail.Callsign && (
-                <div className="detail-item detail-item-6">
+                <div className="detail-item detail-item-7">
                   <Navigation size={24} color="#00ff00" strokeWidth={2} />
                   <p><strong>Callsign:</strong> <TypewriterText text={selectedAircraftDetail.Callsign} speed={60} /></p>
                 </div>
               )}
               {selectedAircraftDetail.Altitude !== undefined && (
-                <div className="detail-item detail-item-7">
+                <div className="detail-item detail-item-8">
                   <Mountain size={24} color="#00ff00" strokeWidth={2} />
                   <p><strong>Altitude:</strong> <TypewriterText text={selectedAircraftDetail.Altitude === 'ground' ? 'On Ground' : `${Math.round(selectedAircraftDetail.Altitude)} ft`} speed={60} /></p>
                 </div>
               )}
               {selectedAircraftDetail.Speed !== undefined && (
-                <div className="detail-item detail-item-8">
+                <div className="detail-item detail-item-9">
                   <Gauge size={24} color="#00ff00" strokeWidth={2} />
                   <p><strong>Speed:</strong> <TypewriterText text={`${selectedAircraftDetail.Speed} km/h`} speed={60} /></p>
                 </div>
               )}
+              <div className="detail-item detail-item-10">
+                <Radio size={24} color="#00ff00" strokeWidth={2} />
+                <p><strong>ICAO:</strong> <TypewriterText text={selectedAircraftDetail.ICAO} speed={60} /></p>
+              </div>
             </>
             )}
             </div>
