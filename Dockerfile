@@ -21,12 +21,11 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Install serve to run the production build
-RUN npm install -g serve
-
-# Copy built assets from builder stage
+# Copy built assets and dependencies from builder stage
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/vite.config.ts ./vite.config.ts
 
 # Expose port 3000 for the application
 # This port will be accessible to NGINX in another container
@@ -36,6 +35,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start the server
-# Using serve with CORS enabled and SPA mode
-CMD ["serve", "-s", "dist", "-l", "3000", "--no-clipboard"]
+# Start the server using Vite preview (supports proxy)
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0"]
