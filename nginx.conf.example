@@ -1,0 +1,112 @@
+# Example NGINX configuration for reverse proxy
+# Place this in your NGINX container's configuration directory
+# Typically: /etc/nginx/conf.d/snailwatch.conf
+
+upstream snailwatch_backend {
+    # Use the container name from docker-compose.yml
+    # If both containers are on the same Docker network
+    server snailwatch:3000;
+    
+    # If using host networking or different setup, use:
+    # server host.docker.internal:3000;  # For Docker Desktop (Mac/Windows)
+    # server 172.17.0.1:3000;            # For Linux host
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    
+    # Replace with your domain name
+    server_name snailwatch.example.com;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    # Logging
+    access_log /var/log/nginx/snailwatch_access.log;
+    error_log /var/log/nginx/snailwatch_error.log;
+    
+    # Client body size limit (adjust as needed)
+    client_max_body_size 10M;
+    
+    # Proxy settings
+    location / {
+        proxy_pass http://snailwatch_backend;
+        proxy_http_version 1.1;
+        
+        # WebSocket support (if needed in future)
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        
+        # Standard proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Buffering
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+        proxy_busy_buffers_size 8k;
+        
+        # Cache bypass for dynamic content
+        proxy_cache_bypass $http_upgrade;
+    }
+    
+    # Health check endpoint (optional)
+    location /health {
+        proxy_pass http://snailwatch_backend;
+        access_log off;
+    }
+    
+    # Static assets caching (if needed)
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass http://snailwatch_backend;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+
+# HTTPS configuration (recommended for production)
+# Uncomment and configure after setting up SSL certificates
+# server {
+#     listen 443 ssl http2;
+#     listen [::]:443 ssl http2;
+#     
+#     server_name snailwatch.example.com;
+#     
+#     # SSL certificates (use Let's Encrypt or your provider)
+#     ssl_certificate /etc/nginx/ssl/snailwatch.crt;
+#     ssl_certificate_key /etc/nginx/ssl/snailwatch.key;
+#     
+#     # SSL configuration
+#     ssl_protocols TLSv1.2 TLSv1.3;
+#     ssl_ciphers HIGH:!aNULL:!MD5;
+#     ssl_prefer_server_ciphers on;
+#     ssl_session_cache shared:SSL:10m;
+#     ssl_session_timeout 10m;
+#     
+#     # Include the same location blocks as above
+#     location / {
+#         proxy_pass http://snailwatch_backend;
+#         # ... (same proxy settings as above)
+#     }
+# }
+
+# HTTP to HTTPS redirect (when SSL is enabled)
+# server {
+#     listen 80;
+#     listen [::]:80;
+#     server_name snailwatch.example.com;
+#     return 301 https://$server_name$request_uri;
+# }
