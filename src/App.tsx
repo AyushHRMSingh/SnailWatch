@@ -85,6 +85,7 @@ function App() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const planeMarker = useRef<maplibregl.Marker | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
 
   const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number, mach?: number) => {
@@ -255,6 +256,13 @@ function App() {
       const newEntries = currentAircraft.filter(ac => !previousAircraft.current.has(ac.hex) && ac.r);
       if (newEntries.length > 0) {
         console.log('New aircraft detected:', newEntries);
+        
+        // Play beep sound
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0; // Reset to start
+          audioRef.current.play().catch(err => console.log('Audio play failed:', err));
+        }
+        
         const newAircraft = newEntries[0];
         fetchAircraftDetails(
           newAircraft.hex.replace('~', ''),
@@ -427,35 +435,35 @@ function App() {
     const selectedAircraft = aircraft.find(ac => ac.hex === selectedAircraftDetail.ICAO);
     if (!selectedAircraft) return;
 
-    // Remove old map if exists
-    if (map.current) {
-      map.current.remove();
-      map.current = null;
-    }
+    // Only recreate map if it doesn't exist
+    if (!map.current) {
+      // Calculate bounds based on scanner range
+      const radiusInMeters = parseFloat(radius) * 1852; // Convert NM to meters
+      
+      // Calculate lat/lon deltas
+      const latDelta = (radiusInMeters / 111320); // 1 degree latitude ≈ 111,320 meters
+      const lonDelta = (radiusInMeters / (111320 * Math.cos(userLocation.lat * Math.PI / 180)));
+      
+      // Calculate bounds
+      const bounds: [[number, number], [number, number]] = [
+        [userLocation.lon - lonDelta, userLocation.lat - latDelta], // Southwest
+        [userLocation.lon + lonDelta, userLocation.lat + latDelta]  // Northeast
+      ];
 
-    // Calculate zoom level so the circle edge matches the scanner range
-    // Map container is 500px diameter, so radius is 250px
-    // We want the scanner range to fit exactly at the edge
-    const radiusInMeters = parseFloat(radius) * 1852; // Convert NM to meters
-    const mapRadiusPixels = 250; // Half of 500px container
-    
-    // Calculate zoom level: zoom = log2(mapWidth * 156543.03 / (distance * cos(lat)))
-    // Simplified: at equator, 1 pixel = 156543.03 / (2^zoom) meters
-    const metersPerPixel = radiusInMeters / mapRadiusPixels;
-    const zoom = Math.log2(156543.03 * Math.cos(userLocation.lat * Math.PI / 180) / metersPerPixel);
+      // Create new map with bounds
+      const mapInstance = new maplibregl.Map({
+        container: mapContainer.current,
+        style: '/style.json',
+        bounds: bounds,
+        fitBoundsOptions: {
+          padding: 0
+        }
+      });
 
-    // Create new map centered on user's location
-    const mapInstance = new maplibregl.Map({
-      container: mapContainer.current,
-      style: '/style.json',
-      center: [userLocation.lon, userLocation.lat],
-      zoom: zoom,
-    });
+      map.current = mapInstance;
 
-    map.current = mapInstance;
-
-    // Wait for map to load before adding marker and range circle
-    mapInstance.on('load', () => {
+      // Wait for map to load before adding marker and range circle
+      mapInstance.on('load', () => {
       // Convert nautical miles to meters (1 NM = 1852 meters)
       const radiusInMeters = parseFloat(radius) * 1852;
       
@@ -535,16 +543,18 @@ function App() {
       planeMarker.current = new maplibregl.Marker({ element: el })
         .setLngLat([selectedAircraft.lon, selectedAircraft.lat])
         .addTo(mapInstance);
-    });
+      });
+    } else {
+      // Map exists, just update the plane marker
+      if (planeMarker.current) {
+        planeMarker.current.setLngLat([selectedAircraft.lon, selectedAircraft.lat]);
+      }
+    }
 
     return () => {
       if (planeMarker.current) {
         planeMarker.current.remove();
         planeMarker.current = null;
-      }
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
       }
     };
   }, [selectedAircraftDetail, aircraft, userLocation, radius]);
@@ -552,6 +562,9 @@ function App() {
   return (
     <div className="App">
       <div className="radar-bg"></div>
+      
+      {/* Hidden audio element for sonar sound */}
+      <audio ref={audioRef} src="/sonar.mp3" preload="auto" />
 
       {isLoadingRepo && (
         <div className="loading-overlay">
