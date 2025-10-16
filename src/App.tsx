@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
-import { FileText, Plane, Factory, Users, Radio, Settings, X } from 'lucide-react';
+import { FileText, Plane, Factory, Users, Radio, Settings, X, Navigation, Mountain, Gauge, ExternalLink } from 'lucide-react';
 
 // Typewriter hook
 const useTypewriter = (text: string, speed: number = 50) => {
@@ -34,10 +34,12 @@ interface Aircraft {
   hex: string;
   r: string;
   t: string;
+  flight?: string;
   lat: number;
   lon: number;
   alt_baro: number;
   gs: number;
+  mach?: number;
 }
 
 interface AircraftDetail {
@@ -46,6 +48,9 @@ interface AircraftDetail {
   Manufacturer: string;
   Type: string;
   RegisteredOwners: string;
+  Callsign?: string;
+  Altitude?: number;
+  Speed?: number; // Speed in km/h converted from Mach
   error?: string;
 }
 
@@ -77,7 +82,9 @@ function App() {
   const previousAircraft = useRef(new Set<string>());
   const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
 
-  const fetchAircraftDetails = async (hex: string) => {
+  const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number, mach?: number) => {
+    // Convert Mach to km/h (Mach 1 ≈ 1234.8 km/h at sea level)
+    const speedKmh = mach ? Math.round(mach * 1234.8) : undefined;
     try {
       console.log('Fetching details for hex:', hex);
       
@@ -87,6 +94,9 @@ function App() {
         if (res.ok) {
           const details: AircraftDetail = await res.json();
           details.ICAO = hex;
+          details.Callsign = callsign;
+          details.Altitude = altitude;
+          details.Speed = speedKmh;
           setIsRevealing(true);
           setTimeout(() => {
             setIsRevealing(false);
@@ -114,6 +124,9 @@ function App() {
               Manufacturer: aircraft.manufacturer || 'Unknown',
               Type: aircraft.type || aircraft.icao_type || 'Unknown',
               RegisteredOwners: aircraft.registered_owner || 'Unknown',
+              Callsign: callsign,
+              Altitude: altitude,
+              Speed: speedKmh,
             };
             setIsRevealing(true);
             setTimeout(() => {
@@ -142,6 +155,9 @@ function App() {
               Manufacturer: hexdbData.Manufacturer || 'Unknown',
               Type: hexdbData.Type || hexdbData.ICAOTypeCode || 'Unknown',
               RegisteredOwners: hexdbData.RegisteredOwners || 'Unknown',
+              Callsign: callsign,
+              Altitude: altitude,
+              Speed: speedKmh,
             };
             setIsRevealing(true);
             setTimeout(() => {
@@ -181,6 +197,9 @@ function App() {
             Manufacturer: manufacturer || (model ? model : 'Unknown'),
             Type: type || 'Unknown',
             RegisteredOwners: owner || 'Unknown',
+            Callsign: callsign,
+            Altitude: altitude,
+            Speed: speedKmh,
           };
           
           setIsRevealing(true);
@@ -231,7 +250,13 @@ function App() {
       const newEntries = currentAircraft.filter(ac => !previousAircraft.current.has(ac.hex) && ac.r);
       if (newEntries.length > 0) {
         console.log('New aircraft detected:', newEntries);
-        fetchAircraftDetails(newEntries[0].hex.replace('~', ''));
+        const newAircraft = newEntries[0];
+        fetchAircraftDetails(
+          newAircraft.hex.replace('~', ''),
+          newAircraft.flight?.trim(),
+          newAircraft.alt_baro,
+          newAircraft.mach
+        );
       }
 
       setAircraft(currentAircraft);
@@ -472,7 +497,7 @@ function App() {
               )}
 
               <div className="settings-section">
-                <label>Radius (km)</label>
+                <label>Radius (NM)</label>
                 <input 
                   type="text" 
                   value={radius}
@@ -509,7 +534,7 @@ function App() {
         <h1>Snailwatch</h1>
         {userLocation && (
           <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>
-            📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)} • {radius}km radius
+            📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)} • {radius} NM radius
           </p>
         )}
         {locationError && (
@@ -530,6 +555,15 @@ function App() {
               <div className="card-header card-header-enter">
                 <Plane size={32} color="#00ff00" strokeWidth={2.5} style={{ filter: 'drop-shadow(0 0 8px rgba(0, 255, 0, 0.6))' }} />
                 <h2><TypewriterText text="AIRCRAFT IDENTIFIED" speed={80} /></h2>
+                <a 
+                  href={`https://www.flightradar24.com/${selectedAircraftDetail.Registration.toLowerCase().replace(/[^a-z0-9]/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ marginLeft: '10px', display: 'inline-flex', alignItems: 'center' }}
+                  title="View on FlightRadar24"
+                >
+                  <ExternalLink size={24} color="#00ff00" strokeWidth={2} />
+                </a>
               </div>
               <div className="detail-item detail-item-1">
                 <Radio size={24} color="#00ff00" strokeWidth={2} />
@@ -551,6 +585,24 @@ function App() {
                 <Users size={24} color="#00ff00" strokeWidth={2} />
                 <p><strong>Owner:</strong> <TypewriterText text={selectedAircraftDetail.RegisteredOwners} speed={60} /></p>
               </div>
+              {selectedAircraftDetail.Callsign && (
+                <div className="detail-item detail-item-6">
+                  <Navigation size={24} color="#00ff00" strokeWidth={2} />
+                  <p><strong>Callsign:</strong> <TypewriterText text={selectedAircraftDetail.Callsign} speed={60} /></p>
+                </div>
+              )}
+              {selectedAircraftDetail.Altitude !== undefined && (
+                <div className="detail-item detail-item-7">
+                  <Mountain size={24} color="#00ff00" strokeWidth={2} />
+                  <p><strong>Altitude:</strong> <TypewriterText text={`${Math.round(selectedAircraftDetail.Altitude)} ft`} speed={60} /></p>
+                </div>
+              )}
+              {selectedAircraftDetail.Speed !== undefined && (
+                <div className="detail-item detail-item-8">
+                  <Gauge size={24} color="#00ff00" strokeWidth={2} />
+                  <p><strong>Speed:</strong> <TypewriterText text={`${selectedAircraftDetail.Speed} km/h`} speed={60} /></p>
+                </div>
+              )}
             </>
           )}
         </div>
