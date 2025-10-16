@@ -28,6 +28,13 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0', // Listen on all interfaces for Docker
     port: 3000,
+    allowedHosts: [
+      'localhost',
+      '.ngrok-free.app',
+      '.ngrok.io',
+      'radar.ayushhrmsingh.engineer',
+      '.ayushhrmsingh.engineer', // Allow all subdomains
+    ],
     proxy: {
       '/api': {
         target: 'https://opendata.adsb.fi/api/v2',
