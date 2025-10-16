@@ -728,7 +728,7 @@ function App() {
         {locationError && (
           <p style={{ fontSize: '0.9rem', color: '#ffaa00' }}>⚠️ {locationError}</p>
         )}
-        <p>Tracking {aircraft.length} aircraft.</p>
+        <p>Tracking {aircraft.length} aircraft</p>
         <p className="countdown">Next refresh in {countdown}s</p>
       </header>
 
