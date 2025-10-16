@@ -42,6 +42,7 @@ interface Aircraft {
   alt_baro: number | 'ground';
   gs: number;
   mach?: number;
+  track?: number; // Heading in degrees (0 = North)
 }
 
 interface AircraftDetail {
@@ -564,9 +565,13 @@ function App() {
       el.innerHTML = '✈️';
       el.style.fontSize = '24px';
       el.style.cursor = 'pointer';
+      // Rotate based on track (heading)
+      if (selectedAircraft.track !== undefined) {
+        el.style.transform = `rotate(${selectedAircraft.track}deg)`;
+      }
 
       // Add plane marker at aircraft's location
-      planeMarker.current = new maplibregl.Marker({ element: el })
+      planeMarker.current = new maplibregl.Marker({ element: el, rotation: selectedAircraft.track || 0 })
         .setLngLat([selectedAircraft.lon, selectedAircraft.lat])
         .addTo(mapInstance);
       });
@@ -582,8 +587,12 @@ function App() {
         el.innerHTML = '✈️';
         el.style.fontSize = '24px';
         el.style.cursor = 'pointer';
+        // Rotate based on track (heading)
+        if (selectedAircraft.track !== undefined) {
+          el.style.transform = `rotate(${selectedAircraft.track}deg)`;
+        }
 
-        planeMarker.current = new maplibregl.Marker({ element: el })
+        planeMarker.current = new maplibregl.Marker({ element: el, rotation: selectedAircraft.track || 0 })
           .setLngLat([selectedAircraft.lon, selectedAircraft.lat])
           .addTo(map.current);
       }
