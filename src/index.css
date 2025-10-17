@@ -28,6 +28,11 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  scroll-behavior: smooth;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 h1 {
@@ -52,6 +57,15 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (prefers-color-scheme: light) {

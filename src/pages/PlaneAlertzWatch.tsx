@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plane, Radio, Volume2, VolumeX, RefreshCw, MapPin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plane, Radio, Volume2, VolumeX, RefreshCw, MapPin, AlertCircle } from 'lucide-react';
 import { useColors } from '../context/ColorContext';
+import { getDeviceInfo, logDeviceInfo } from '../utils/deviceDetection';
 import './PlaneAlertzWatch.css';
 
 // ===== CONFIGURABLE TIMERS =====
@@ -55,6 +57,7 @@ interface AircraftDetail {
 
 function PlaneAlertzWatch() {
   const { currentColors } = useColors();
+  const navigate = useNavigate();
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [selectedAircraftDetail, setSelectedAircraftDetail] = useState<AircraftDetail | null>(null);
   const [isRevealing, setIsRevealing] = useState(false);
@@ -64,20 +67,52 @@ function PlaneAlertzWatch() {
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('watchSoundEnabled') !== 'false');
   const [isRoundScreen, setIsRoundScreen] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState(() => getDeviceInfo());
+  const [showDeviceWarning, setShowDeviceWarning] = useState(false);
   
   const previousAircraft = useRef(new Set<string>());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fetchCounter = useRef(0);
+  const redirectTimeout = useRef<number | null>(null);
+
+  // Device detection and redirect logic
+  useEffect(() => {
+    const info = getDeviceInfo();
+    setDeviceInfo(info);
+    
+    // Log device info for debugging
+    logDeviceInfo();
+    
+    // If not a wearable device, show warning and redirect
+    if (!info.isWearable) {
+      console.warn('⚠️ Watch OS version accessed from non-wearable device');
+      setShowDeviceWarning(true);
+      
+      // Auto-redirect after 5 seconds
+      redirectTimeout.current = window.setTimeout(() => {
+        if (info.isMobile) {
+          navigate('/');
+        } else if (info.isTablet || info.isDesktop) {
+          navigate('/trackerz');
+        } else {
+          navigate('/');
+        }
+      }, 5000);
+    }
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (redirectTimeout.current) {
+        clearTimeout(redirectTimeout.current);
+      }
+    };
+  }, [navigate]);
 
   // Detect screen shape (round vs square)
   useEffect(() => {
     const detectScreenShape = () => {
-      // Check if device has round screen characteristics
-      // Round screens typically have width === height and are small
-      const isRound = (window.innerWidth === window.innerHeight && window.innerWidth < 250) ||
-                      window.matchMedia('(display-mode: standalone)').matches && 
-                      Math.abs(window.innerWidth - window.innerHeight) < 10;
-      setIsRoundScreen(isRound);
+      const info = getDeviceInfo();
+      setIsRoundScreen(info.isRoundScreen);
     };
     
     detectScreenShape();
@@ -241,30 +276,32 @@ function PlaneAlertzWatch() {
 
   const containerStyle: React.CSSProperties = {
     width: '100vw',
-    height: '100vh',
-    background: currentColors.background,
+    minHeight: '100vh',
+    background: '#000000', // True black for OLED
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    overflow: 'hidden',
-    padding: isRoundScreen ? '15%' : '10px',
+    overflow: 'visible', // Allow scrolling to navigation
+    padding: 0,
   };
 
   const cardStyle: React.CSSProperties = {
-    width: '100%',
-    height: '100%',
-    background: `linear-gradient(135deg, ${currentColors.bgDark}ee, ${currentColors.background}dd)`,
-    borderRadius: isRoundScreen ? '50%' : '20px',
-    border: `3px solid ${currentColors.primary}`,
-    boxShadow: `0 0 30px ${currentColors.shadow}`,
+    width: 'min(90vw, 90vh)',
+    height: 'min(90vw, 90vh)',
+    aspectRatio: '1',
+    background: `linear-gradient(135deg, #0a0a0a 0%, #000000 100%)`,
+    borderRadius: isRoundScreen ? '50%' : 'clamp(1.25rem, 5vw, 2.5rem)',
+    border: `clamp(2px, 0.5vw, 3px) solid ${currentColors.primary}`,
+    boxShadow: `0 0 clamp(1.5rem, 7vw, 3rem) ${currentColors.shadow}`,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: isRoundScreen ? '20px' : '15px',
+    padding: isRoundScreen ? '15%' : 'clamp(1rem, 4vw, 2rem)',
     position: 'relative',
+    boxSizing: 'border-box',
   };
 
   const formatAltitude = (alt: number | 'ground' | undefined) => {
@@ -281,6 +318,142 @@ function PlaneAlertzWatch() {
   return (
     <div className="watch-container" style={containerStyle}>
       <audio ref={audioRef} src="/sonar.mp3" preload="auto" />
+
+      {/* Device Warning for Non-Wearables */}
+      {showDeviceWarning && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: `${currentColors.bgDark}f8`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10001,
+          padding: '20px',
+        }}>
+          <div style={{
+            background: currentColors.background,
+            borderRadius: '20px',
+            border: `3px solid ${currentColors.primary}`,
+            padding: '30px',
+            maxWidth: '500px',
+            textAlign: 'center',
+            boxShadow: `0 0 40px ${currentColors.shadow}`,
+          }}>
+            <AlertCircle 
+              size={60} 
+              color={currentColors.primary} 
+              strokeWidth={2.5}
+              style={{ marginBottom: '20px' }}
+            />
+            
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: currentColors.primary,
+              marginBottom: '15px',
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+            }}>
+              Watch OS Only
+            </h2>
+            
+            <p style={{
+              fontSize: '16px',
+              color: currentColors.secondary,
+              marginBottom: '20px',
+              lineHeight: '1.6',
+            }}>
+              This version is optimized for smartwatches and wearable devices.
+              {deviceInfo.isDesktop && ' You\'re on a desktop computer.'}
+              {deviceInfo.isTablet && ' You\'re on a tablet.'}
+              {deviceInfo.isMobile && ' You\'re on a mobile phone.'}
+            </p>
+
+            <p style={{
+              fontSize: '14px',
+              color: currentColors.secondary,
+              opacity: 0.7,
+              marginBottom: '25px',
+            }}>
+              Redirecting to the appropriate version in 5 seconds...
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  if (redirectTimeout.current) clearTimeout(redirectTimeout.current);
+                  navigate('/');
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: currentColors.primary,
+                  color: currentColors.bgDark,
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                }}
+              >
+                Go to Alerts
+              </button>
+              
+              <button
+                onClick={() => {
+                  if (redirectTimeout.current) clearTimeout(redirectTimeout.current);
+                  navigate('/trackerz');
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: 'transparent',
+                  color: currentColors.primary,
+                  border: `2px solid ${currentColors.primary}`,
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                }}
+              >
+                Go to Tracker
+              </button>
+
+              <button
+                onClick={() => {
+                  if (redirectTimeout.current) clearTimeout(redirectTimeout.current);
+                  setShowDeviceWarning(false);
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: 'transparent',
+                  color: currentColors.secondary,
+                  border: `2px solid ${currentColors.secondary}`,
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  opacity: 0.7,
+                }}
+              >
+                Continue Anyway
+              </button>
+            </div>
+
+            <p style={{
+              fontSize: '12px',
+              color: currentColors.secondary,
+              opacity: 0.5,
+              marginTop: '20px',
+            }}>
+              Device: {deviceInfo.isDesktop ? 'Desktop' : deviceInfo.isTablet ? 'Tablet' : deviceInfo.isMobile ? 'Mobile' : 'Unknown'} • 
+              Screen: {deviceInfo.viewport.width}x{deviceInfo.viewport.height}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Reveal Animation */}
       {isRevealing && (
@@ -401,13 +574,13 @@ function PlaneAlertzWatch() {
 
       {/* Main Card */}
       <div className="watch-card" style={cardStyle}>
-        {/* Top Controls */}
+        {/* Top Controls - 48px minimum touch targets */}
         <div style={{
           position: 'absolute',
-          top: isRoundScreen ? '25px' : '15px',
-          right: isRoundScreen ? '25px' : '15px',
+          top: isRoundScreen ? 'clamp(1.5rem, 6vw, 2rem)' : '1rem',
+          right: isRoundScreen ? 'clamp(1.5rem, 6vw, 2rem)' : '1rem',
           display: 'flex',
-          gap: '8px',
+          gap: 'clamp(0.5rem, 2vw, 0.75rem)',
         }}>
           <button
             onClick={() => {
@@ -415,44 +588,50 @@ function PlaneAlertzWatch() {
               localStorage.setItem('watchSoundEnabled', (!soundEnabled).toString());
             }}
             style={{
-              width: '40px',
-              height: '40px',
+              minWidth: '48px',
+              minHeight: '48px',
+              width: 'clamp(48px, 12vw, 56px)',
+              height: 'clamp(48px, 12vw, 56px)',
               borderRadius: '50%',
               background: soundEnabled ? currentColors.primary : 'transparent',
-              border: `2px solid ${currentColors.primary}`,
+              border: `clamp(2px, 0.5vw, 3px) solid ${currentColors.primary}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
+              padding: 0,
             }}
           >
             {soundEnabled ? 
-              <Volume2 size={18} color={currentColors.bgDark} /> : 
-              <VolumeX size={18} color={currentColors.primary} />
+              <Volume2 size={Math.max(18, window.innerWidth * 0.05)} color={currentColors.bgDark} /> : 
+              <VolumeX size={Math.max(18, window.innerWidth * 0.05)} color={currentColors.primary} />
             }
           </button>
         </div>
 
         <div style={{
           position: 'absolute',
-          top: isRoundScreen ? '25px' : '15px',
-          left: isRoundScreen ? '25px' : '15px',
+          top: isRoundScreen ? 'clamp(1.5rem, 6vw, 2rem)' : '1rem',
+          left: isRoundScreen ? 'clamp(1.5rem, 6vw, 2rem)' : '1rem',
         }}>
           <button
             onClick={() => setShowSettings(true)}
             style={{
-              width: '40px',
-              height: '40px',
+              minWidth: '48px',
+              minHeight: '48px',
+              width: 'clamp(48px, 12vw, 56px)',
+              height: 'clamp(48px, 12vw, 56px)',
               borderRadius: '50%',
               background: 'transparent',
-              border: `2px solid ${currentColors.primary}`,
+              border: `clamp(2px, 0.5vw, 3px) solid ${currentColors.primary}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
+              padding: 0,
             }}
           >
-            <RefreshCw size={18} color={currentColors.primary} />
+            <RefreshCw size={Math.max(18, window.innerWidth * 0.05)} color={currentColors.primary} />
           </button>
         </div>
 
@@ -469,32 +648,34 @@ function PlaneAlertzWatch() {
             gap: '8px',
           }}>
             <Plane 
-              size={isRoundScreen ? 40 : 35} 
+              size={Math.max(35, Math.min(window.innerWidth * 0.1, 50))} 
               color={currentColors.primary} 
               strokeWidth={2.5}
               style={{ 
-                marginBottom: '5px',
-                filter: `drop-shadow(0 0 10px ${currentColors.shadow})`
+                marginBottom: 'clamp(0.3rem, 1.5vw, 0.5rem)',
+                filter: `drop-shadow(0 0 clamp(0.5rem, 2.5vw, 1rem) ${currentColors.shadow})`
               }}
             />
             
             <div style={{
-              fontSize: isRoundScreen ? '18px' : '16px',
+              fontSize: 'clamp(1rem, 4.5vw, 1.25rem)',
               fontWeight: 'bold',
               color: currentColors.primary,
-              letterSpacing: '1px',
+              letterSpacing: '0.05em',
+              lineHeight: 1.2,
             }}>
               {selectedAircraftDetail.Callsign || selectedAircraftDetail.Registration}
             </div>
 
             <div style={{
-              fontSize: isRoundScreen ? '12px' : '11px',
+              fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
               color: currentColors.secondary,
               opacity: 0.8,
               maxWidth: '90%',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              lineHeight: 1.3,
             }}>
               {selectedAircraftDetail.Type}
             </div>
@@ -502,34 +683,34 @@ function PlaneAlertzWatch() {
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: '10px',
-              marginTop: '10px',
+              gap: 'clamp(0.5rem, 2.5vw, 0.75rem)',
+              marginTop: 'clamp(0.5rem, 2.5vw, 0.75rem)',
               width: '100%',
             }}>
               <div style={{
                 background: `${currentColors.bgDark}80`,
-                padding: '8px',
-                borderRadius: '8px',
+                padding: 'clamp(0.5rem, 2vw, 0.625rem)',
+                borderRadius: 'clamp(0.5rem, 2vw, 0.625rem)',
                 border: `1px solid ${currentColors.primary}40`,
               }}>
-                <div style={{ fontSize: '10px', color: currentColors.secondary, opacity: 0.6, marginBottom: '2px' }}>
-                  ALTITUDE
+                <div style={{ fontSize: 'clamp(0.625rem, 2.5vw, 0.75rem)', color: currentColors.secondary, opacity: 0.6, marginBottom: '0.125rem', lineHeight: 1.2 }}>
+                  ALT
                 </div>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', color: currentColors.primary }}>
+                <div style={{ fontSize: 'clamp(0.8rem, 3.3vw, 0.95rem)', fontWeight: 'bold', color: currentColors.primary, lineHeight: 1.2 }}>
                   {formatAltitude(selectedAircraftDetail.Altitude)}
                 </div>
               </div>
 
               <div style={{
                 background: `${currentColors.bgDark}80`,
-                padding: '8px',
-                borderRadius: '8px',
+                padding: 'clamp(0.5rem, 2vw, 0.625rem)',
+                borderRadius: 'clamp(0.5rem, 2vw, 0.625rem)',
                 border: `1px solid ${currentColors.primary}40`,
               }}>
-                <div style={{ fontSize: '10px', color: currentColors.secondary, opacity: 0.6, marginBottom: '2px' }}>
+                <div style={{ fontSize: 'clamp(0.625rem, 2.5vw, 0.75rem)', color: currentColors.secondary, opacity: 0.6, marginBottom: '0.125rem', lineHeight: 1.2 }}>
                   SPEED
                 </div>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', color: currentColors.primary }}>
+                <div style={{ fontSize: 'clamp(0.8rem, 3.3vw, 0.95rem)', fontWeight: 'bold', color: currentColors.primary, lineHeight: 1.2 }}>
                   {formatSpeed(selectedAircraftDetail.Speed)}
                 </div>
               </div>
@@ -537,10 +718,11 @@ function PlaneAlertzWatch() {
 
             {selectedAircraftDetail.Origin && selectedAircraftDetail.Destination && (
               <div style={{
-                marginTop: '8px',
-                fontSize: '11px',
+                marginTop: 'clamp(0.4rem, 2vw, 0.6rem)',
+                fontSize: 'clamp(0.7rem, 2.8vw, 0.85rem)',
                 color: currentColors.secondary,
                 opacity: 0.7,
+                lineHeight: 1.3,
               }}>
                 {selectedAircraftDetail.Origin.iata_code} → {selectedAircraftDetail.Destination.iata_code}
               </div>
@@ -556,39 +738,42 @@ function PlaneAlertzWatch() {
             gap: '15px',
           }}>
             <Radio 
-              size={isRoundScreen ? 50 : 45} 
+              size={Math.max(40, Math.min(window.innerWidth * 0.12, 60))} 
               color={currentColors.primary} 
               strokeWidth={2}
               style={{ 
-                filter: `drop-shadow(0 0 15px ${currentColors.shadow})`,
+                filter: `drop-shadow(0 0 clamp(0.75rem, 3.5vw, 1.25rem) ${currentColors.shadow})`,
                 animation: 'pulse 2s infinite'
               }}
             />
             
             <div style={{
-              fontSize: isRoundScreen ? '16px' : '14px',
+              fontSize: 'clamp(0.875rem, 4vw, 1.125rem)',
               fontWeight: 'bold',
               color: currentColors.primary,
               textTransform: 'uppercase',
-              letterSpacing: '2px',
+              letterSpacing: '0.1em',
+              lineHeight: 1.2,
             }}>
               SCANNING
             </div>
 
             <div style={{
-              fontSize: isRoundScreen ? '12px' : '11px',
+              fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
               color: currentColors.secondary,
               opacity: 0.7,
+              lineHeight: 1.3,
             }}>
               {aircraft.length} aircraft nearby
             </div>
 
             {countdown > 0 && (
               <div style={{
-                fontSize: isRoundScreen ? '24px' : '20px',
+                fontSize: 'clamp(1.25rem, 6vw, 1.75rem)',
                 fontWeight: 'bold',
                 color: currentColors.primary,
                 fontFamily: 'monospace',
+                lineHeight: 1,
               }}>
                 {countdown}s
               </div>
@@ -599,15 +784,16 @@ function PlaneAlertzWatch() {
         {/* Bottom Status */}
         <div style={{
           position: 'absolute',
-          bottom: isRoundScreen ? '25px' : '15px',
+          bottom: isRoundScreen ? 'clamp(1.5rem, 6vw, 2rem)' : '1rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '5px',
-          fontSize: '10px',
+          gap: 'clamp(0.25rem, 1.2vw, 0.4rem)',
+          fontSize: 'clamp(0.625rem, 2.5vw, 0.75rem)',
           color: currentColors.secondary,
           opacity: 0.6,
+          lineHeight: 1,
         }}>
-          <MapPin size={12} />
+          <MapPin size={Math.max(12, window.innerWidth * 0.03)} />
           <span>{radius} NM</span>
         </div>
       </div>

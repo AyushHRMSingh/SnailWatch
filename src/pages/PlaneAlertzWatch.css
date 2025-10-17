@@ -1,48 +1,56 @@
-/* Watch OS Optimized Styles */
+/* Wear OS Optimized Styles - Target 390x390px circular display */
 
 /* Base styles for Watch */
 .watch-container {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-}
-
-/* Optimizations for round screens (Apple Watch circular models) */
-@media (display-mode: standalone) and (max-width: 200px) {
-  .watch-container {
-    padding: 15%;
-  }
+  background: #000000; /* True black for OLED */
+  color: #ffffff;
   
-  .watch-card {
-    border-radius: 50% !important;
-    aspect-ratio: 1 !important;
-  }
+  /* Optimize for circular viewports */
+  aspect-ratio: 1 / 1;
+  max-width: 100vh;
+  max-height: 100vw;
+  margin: 0 auto;
 }
 
-/* Optimizations for square/rectangular screens */
-@media (display-mode: standalone) and (min-width: 200px) {
-  .watch-container {
-    padding: 10px;
-  }
+/* Wear OS specific - 390x390px circular viewport */
+.watch-card {
+  /* Use viewport units for responsive sizing */
+  width: min(90vw, 90vh);
+  height: min(90vw, 90vh);
+  aspect-ratio: 1;
+  border-radius: 50%;
   
-  .watch-card {
-    border-radius: 20px !important;
-  }
+  /* Safe area for circular displays - keep content in center 70% */
+  padding: 15% !important;
+  box-sizing: border-box;
 }
 
-/* Touch target optimization - minimum 44x44 points */
+/* Wear OS touch targets - minimum 48x48dp (Google Material Design) */
 button,
-.touch-target {
-  min-width: 44px;
-  min-height: 44px;
+.touch-target,
+.watch-container button {
+  min-width: 48px;
+  min-height: 48px;
   -webkit-tap-highlight-color: transparent;
+  /* Larger tap area for better UX */
+  padding: 0.75rem 1rem;
+}
+
+/* Square displays (some Wear OS devices) */
+@media (max-aspect-ratio: 1.2/1) and (min-aspect-ratio: 0.8/1) {
+  .watch-card {
+    border-radius: clamp(20px, 5vw, 40px);
+  }
 }
 
 /* Prevent text selection on watch */
@@ -91,25 +99,65 @@ textarea {
   }
 }
 
-/* Haptic-style button press effect */
-button:active {
-  transform: scale(0.95);
-  transition: transform 0.1s ease;
+/* Haptic-style button press effect - optimized for touch */
+.watch-container button:active {
+  transform: scale(0.92) translateZ(0);
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.9;
 }
 
-/* Optimize for OLED displays (true black backgrounds) */
-@media (prefers-color-scheme: dark) {
-  .watch-container {
-    background: #000000;
-  }
+/* Improve button visibility on OLED */
+.watch-container button {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-/* Reduce motion for accessibility */
+/* OLED optimization - always use true black for Wear OS */
+.watch-container,
+.watch-container * {
+  /* Force dark mode for battery savings on OLED */
+  color-scheme: dark;
+}
+
+.watch-container {
+  background: #000000 !important; /* Pure black for OLED */
+}
+
+/* Reduce white pixels for OLED battery savings */
+.watch-card {
+  background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+}
+
+/* Reduce motion for accessibility and battery */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  .watch-container * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Optimize animations for 60fps on Wear OS */
+@keyframes watchFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateZ(0);
+  }
+}
+
+@keyframes watchPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1) translateZ(0);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.03) translateZ(0);
   }
 }
 
@@ -124,16 +172,27 @@ button:active {
   }
 }
 
-/* Optimize scrolling for watch (if needed) */
+/* Vertical scrolling optimization for Wear OS */
 .watch-scroll {
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  
+  /* Snap scrolling for better UX */
+  scroll-snap-type: y proximity;
+}
+
+.watch-scroll > * {
+  scroll-snap-align: start;
 }
 
 /* Hide scrollbar on watch */
 .watch-scroll::-webkit-scrollbar {
   display: none;
+  width: 0;
+  height: 0;
 }
 
 .watch-scroll {
@@ -141,35 +200,56 @@ button:active {
   scrollbar-width: none;
 }
 
-/* Typography optimizations for small screens */
+/* Typography optimized for 390px Wear OS displays */
 .watch-text-large {
-  font-size: clamp(16px, 5vw, 24px);
+  font-size: clamp(1rem, 4.5vw, 1.5rem); /* 16-24px */
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
 }
 
 .watch-text-medium {
-  font-size: clamp(12px, 3.5vw, 16px);
+  font-size: clamp(0.875rem, 3.5vw, 1.125rem); /* 14-18px */
   font-weight: 500;
+  line-height: 1.3;
 }
 
 .watch-text-small {
-  font-size: clamp(10px, 2.5vw, 12px);
+  font-size: clamp(0.75rem, 2.8vw, 0.875rem); /* 12-14px */
   font-weight: 400;
+  line-height: 1.4;
 }
 
-/* Ensure proper rendering on retina displays */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  * {
-    -webkit-font-smoothing: subpixel-antialiased;
+/* Optimize for high-DPI Wear OS displays (typically 320-450 DPI) */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 320dpi) {
+  .watch-container {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Sharper borders on high DPI */
+  .watch-card {
+    border-width: 2px;
   }
 }
 
-/* Battery-saving mode - reduce animations */
+/* Battery-saving mode for Wear OS */
 @media (prefers-reduced-motion: reduce) {
   .watch-container * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* Ambient mode support (always-on display) */
+@media (prefers-reduced-motion: reduce) and (prefers-color-scheme: dark) {
+  .watch-container {
+    filter: brightness(0.2) grayscale(1);
+  }
+  
+  .watch-container * {
+    color: #ffffff !important;
+    border-color: #ffffff !important;
   }
 }
 
@@ -184,9 +264,34 @@ button:focus-visible {
   touch-action: manipulation;
 }
 
-/* Optimize for Always-On Display mode */
-@media (prefers-reduced-motion: reduce) and (prefers-color-scheme: dark) {
-  .watch-container {
-    filter: brightness(0.3);
-  }
+/* Wear OS specific viewport units */
+.watch-container {
+  /* Use dvh/dvw for better support on Wear OS */
+  min-height: 100dvh;
+  min-width: 100dvw;
+}
+
+/* Circular safe area - keep important content in center 70% */
+.watch-safe-area {
+  width: 70%;
+  height: 70%;
+  margin: 15% auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Performance optimizations */
+.watch-container * {
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: auto;
+}
+
+/* Reduce repaints */
+.watch-container img,
+.watch-container svg {
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
