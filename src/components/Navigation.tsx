@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Radio, Eye, Navigation as NavIcon } from 'lucide-react';
+import { Radio, Eye, Navigation as NavIcon, Watch } from 'lucide-react';
 import { useColors } from '../context/ColorContext';
 
 function Navigation() {
@@ -18,6 +18,7 @@ function Navigation() {
     { path: '/', label: 'PlaneAlertz', icon: Radio },
     { path: '/watcherz', label: 'Plane Watcherz', icon: Eye },
     { path: '/trackerz', label: 'Plane Trackerz', icon: NavIcon },
+    { path: '/alertz-watch', label: 'Watch OS', icon: Watch },
   ];
 
   return (

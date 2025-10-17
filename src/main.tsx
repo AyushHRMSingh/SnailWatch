@@ -5,6 +5,7 @@ import './index.css'
 import App from './App.tsx'
 import PlaneWatcherz from './pages/PlaneWatcherz.tsx'
 import PlaneTrackerz from './pages/PlaneTrackerz.tsx'
+import PlaneAlertzWatch from './pages/PlaneAlertzWatch.tsx'
 import Navigation from './components/Navigation.tsx'
 import { ColorProvider } from './context/ColorContext.tsx'
 
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<App />} />
           <Route path="/watcherz" element={<PlaneWatcherz />} />
           <Route path="/trackerz" element={<PlaneTrackerz />} />
+          <Route path="/alertz-watch" element={<PlaneAlertzWatch />} />
         </Routes>
       </BrowserRouter>
     </ColorProvider>

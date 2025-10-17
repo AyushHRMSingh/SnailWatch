@@ -1,0 +1,192 @@
+/* Watch OS Optimized Styles */
+
+/* Base styles for Watch */
+.watch-container {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Optimizations for round screens (Apple Watch circular models) */
+@media (display-mode: standalone) and (max-width: 200px) {
+  .watch-container {
+    padding: 15%;
+  }
+  
+  .watch-card {
+    border-radius: 50% !important;
+    aspect-ratio: 1 !important;
+  }
+}
+
+/* Optimizations for square/rectangular screens */
+@media (display-mode: standalone) and (min-width: 200px) {
+  .watch-container {
+    padding: 10px;
+  }
+  
+  .watch-card {
+    border-radius: 20px !important;
+  }
+}
+
+/* Touch target optimization - minimum 44x44 points */
+button,
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent text selection on watch */
+* {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Input fields should allow selection */
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Smooth animations optimized for watch */
+@keyframes watchFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes watchPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes watchRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Haptic-style button press effect */
+button:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
+}
+
+/* Optimize for OLED displays (true black backgrounds) */
+@media (prefers-color-scheme: dark) {
+  .watch-container {
+    background: #000000;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .watch-card {
+    border-width: 3px !important;
+  }
+  
+  button {
+    border-width: 3px !important;
+  }
+}
+
+/* Optimize scrolling for watch (if needed) */
+.watch-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar on watch */
+.watch-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.watch-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Typography optimizations for small screens */
+.watch-text-large {
+  font-size: clamp(16px, 5vw, 24px);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.watch-text-medium {
+  font-size: clamp(12px, 3.5vw, 16px);
+  font-weight: 500;
+}
+
+.watch-text-small {
+  font-size: clamp(10px, 2.5vw, 12px);
+  font-weight: 400;
+}
+
+/* Ensure proper rendering on retina displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  * {
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+}
+
+/* Battery-saving mode - reduce animations */
+@media (prefers-reduced-motion: reduce) {
+  .watch-container * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Focus styles for accessibility (keyboard navigation) */
+button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Prevent double-tap zoom on watch */
+* {
+  touch-action: manipulation;
+}
+
+/* Optimize for Always-On Display mode */
+@media (prefers-reduced-motion: reduce) and (prefers-color-scheme: dark) {
+  .watch-container {
+    filter: brightness(0.3);
+  }
+}
