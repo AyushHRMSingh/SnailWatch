@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FileText, Plane, Radio, Settings, X, Navigation, Mountain, Gauge, Volume2, VolumeX } from 'lucide-react';
+import { Settings, X, Volume2, VolumeX } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useColors } from '../context/ColorContext';
@@ -22,40 +22,6 @@ interface Aircraft {
   dir?: number;
 }
 
-interface AircraftDetail {
-  ICAO: string;
-  Registration: string;
-  Manufacturer: string;
-  Type: string;
-  RegisteredOwners: string;
-  Callsign?: string;
-  Altitude?: number | 'ground';
-  Speed?: number;
-  error?: string;
-  Origin?: {
-    name: string;
-    iata_code: string;
-    municipality: string;
-    country_name: string;
-    lat?: number;
-    lon?: number;
-  };
-  Destination?: {
-    name: string;
-    iata_code: string;
-    municipality: string;
-    country_name: string;
-    lat?: number;
-    lon?: number;
-  };
-  Airline?: {
-    name: string;
-    iata: string;
-    country: string;
-  };
-}
-
-const LOAD_LOCAL_DATABASE = false;
 
 function PlaneWatcherz() {
   const { currentColors } = useColors();
@@ -64,7 +30,6 @@ function PlaneWatcherz() {
   const [selectedAircraft, setSelectedAircraft] = useState<Aircraft | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [customLat, setCustomLat] = useState(() => localStorage.getItem('customLat') || '');
   const [customLon, setCustomLon] = useState(() => localStorage.getItem('customLon') || '');
@@ -191,7 +156,6 @@ function PlaneWatcherz() {
       const lon = parseFloat(customLon);
       if (!isNaN(lat) && !isNaN(lon)) {
         setUserLocation({ lat, lon });
-        setLocationError(null);
         return;
       }
     }
@@ -203,14 +167,13 @@ function PlaneWatcherz() {
             lat: position.coords.latitude,
             lon: position.coords.longitude
           });
-          setLocationError(null);
         },
         (error) => {
-          setLocationError(error.message);
+          console.error('Geolocation error:', error.message);
         }
       );
     } else {
-      setLocationError('Geolocation not supported');
+      console.error('Geolocation not supported');
     }
   }, [useCustomLocation, customLat, customLon]);
 
@@ -485,9 +448,8 @@ function PlaneWatcherz() {
                   const lon = parseFloat(customLon);
                   if (!isNaN(lat) && !isNaN(lon)) {
                     setUserLocation({ lat, lon });
-                    setLocationError(null);
                   } else {
-                    setLocationError('Invalid coordinates');
+                    console.error('Invalid coordinates');
                   }
                 } else {
                   if (navigator.geolocation) {
@@ -497,9 +459,8 @@ function PlaneWatcherz() {
                           lat: position.coords.latitude,
                           lon: position.coords.longitude
                         });
-                        setLocationError(null);
                       },
-                      (error) => setLocationError(error.message)
+                      (error) => console.error('Geolocation error:', error.message)
                     );
                   }
                 }

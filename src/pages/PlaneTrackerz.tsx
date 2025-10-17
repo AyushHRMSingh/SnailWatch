@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { X, ArrowLeft } from 'lucide-react';
+import { useColors } from '../context/ColorContext';
+import { ArrowLeft } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useColors } from '../context/ColorContext';
 import '../App.css';
-
 interface Aircraft {
   hex: string;
   r: string;
