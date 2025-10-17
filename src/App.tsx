@@ -1130,10 +1130,19 @@ function App() {
                   </p>
                 </div>
               )}
-              {selectedAircraftDetail.Airline && (
+              {(selectedAircraftDetail.Airline || selectedAircraftDetail.RegisteredOwners) && (
                 <div className="detail-item detail-item-2">
-                  <Plane size={24} color={currentColors.primary} strokeWidth={2} />
-                  <p><strong>Airline:</strong> <TypewriterText text={`${selectedAircraftDetail.Airline.name} (${selectedAircraftDetail.Airline.iata})`} speed={60} /></p>
+                  <Users size={24} color={currentColors.primary} strokeWidth={2} />
+                  <p>
+                    <strong>{selectedAircraftDetail.Airline ? 'Airline' : 'Owner'}:</strong>{' '}
+                    <TypewriterText 
+                      text={selectedAircraftDetail.Airline 
+                        ? `${selectedAircraftDetail.Airline.name} (${selectedAircraftDetail.Airline.iata})` 
+                        : selectedAircraftDetail.RegisteredOwners || ''
+                      } 
+                      speed={60} 
+                    />
+                  </p>
                 </div>
               )}
               {selectedAircraftDetail.Registration && (
@@ -1152,12 +1161,6 @@ function App() {
                 <div className="detail-item detail-item-5">
                   <Factory size={24} color={currentColors.primary} strokeWidth={2} />
                   <p><strong>Manufacturer:</strong> <TypewriterText text={selectedAircraftDetail.Manufacturer} speed={60} /></p>
-                </div>
-              )}
-              {selectedAircraftDetail.RegisteredOwners && (
-                <div className="detail-item detail-item-6">
-                  <Users size={24} color={currentColors.primary} strokeWidth={2} />
-                  <p><strong>Owner:</strong> <TypewriterText text={selectedAircraftDetail.RegisteredOwners} speed={60} /></p>
                 </div>
               )}
               {selectedAircraftDetail.Callsign && (
