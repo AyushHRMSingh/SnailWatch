@@ -3,6 +3,7 @@ import './App.css';
 import { FileText, Plane, Factory, Users, Radio, Settings, X, Navigation, Mountain, Gauge, ExternalLink, Volume2, VolumeX, RotateCcw } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { useColors } from './context/ColorContext';
 
 // --- Data Interfaces ---
 interface Aircraft {
@@ -56,6 +57,7 @@ interface AircraftDetail {
 const LOAD_LOCAL_DATABASE = false;
 
 function App() {
+  const { colorMode, setColorMode, currentColors } = useColors();
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [selectedAircraftDetail, setSelectedAircraftDetail] = useState<AircraftDetail | null>(null);
   const [isRevealing, setIsRevealing] = useState(false);
@@ -71,7 +73,6 @@ function App() {
   const [isLoadingRepo, setIsLoadingRepo] = useState(LOAD_LOCAL_DATABASE);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('soundEnabled') !== 'false'); // Default true
-  const [colorMode, setColorMode] = useState<'classic' | 'pns'>(() => (localStorage.getItem('colorMode') as 'classic' | 'pns') || 'pns');
   const [dataSource, setDataSource] = useState<'adsb.fi' | 'airplanes.live'>(() => (localStorage.getItem('dataSource') as 'adsb.fi' | 'airplanes.live') || 'adsb.fi');
 
   const previousAircraft = useRef(new Set<string>());
@@ -84,28 +85,6 @@ function App() {
   const previousRadius = useRef<string | null>(null);
   const REFRESH_INTERVAL = 10; // Check for new planes every 10 seconds
   const fetchCounter = useRef(0); // Counter to track fetch cycles
-
-  // Color schemes
-  const colorSchemes = {
-    classic: {
-      primary: '#00ff00',
-      secondary: '#00ff88',
-      accent: '#00ff44',
-      background: 'rgba(0,40,0,0.98)',
-      bgDark: '#000800',
-      shadow: 'rgba(0,255,0,0.9)',
-    },
-    pns: {
-      primary: 'rgb(238, 213, 113)',
-      secondary: 'rgb(255, 255, 255)',
-      accent: 'rgb(16, 8, 82)',
-      background: 'rgba(20, 10, 100, 0.98)',
-      bgDark: 'rgb(16, 8, 82)',
-      shadow: 'rgba(238, 213, 113, 0.9)',
-    },
-  };
-
-  const currentColors = colorSchemes[colorMode];
 
   const resetMapView = () => {
     if (!map.current || !userLocation) return;
@@ -555,9 +534,9 @@ function App() {
       return;
     }
     
-    console.log('Starting fetchData and interval (fetching every 1 second)');
+    console.log('Starting fetchData and interval (fetching every 2.5 seconds)');
     fetchData();
-    const interval = setInterval(fetchData, 1000); // Fetch every 1 second
+    const interval = setInterval(fetchData, 2500); // Fetch every 2.5 seconds
     return () => clearInterval(interval);
   }, [userLocation, radius, dataSource]);
 
@@ -565,17 +544,6 @@ function App() {
     const timer = setInterval(() => setCountdown(prev => (prev > 0 ? prev - 1 : 0)), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  // Apply color scheme to CSS variables
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--color-primary', currentColors.primary);
-    root.style.setProperty('--color-secondary', currentColors.secondary);
-    root.style.setProperty('--color-accent', currentColors.accent);
-    root.style.setProperty('--color-background', currentColors.background);
-    root.style.setProperty('--color-bg-dark', currentColors.bgDark);
-    root.style.setProperty('--color-shadow', currentColors.shadow);
-  }, [colorMode]);
 
   // Initialize map when aircraft is selected
   useEffect(() => {
@@ -975,19 +943,13 @@ function App() {
                 <div className="color-mode-buttons">
                   <button
                     className={`color-mode-button ${colorMode === 'classic' ? 'active' : ''}`}
-                    onClick={() => {
-                      setColorMode('classic');
-                      localStorage.setItem('colorMode', 'classic');
-                    }}
+                    onClick={() => setColorMode('classic')}
                   >
                     Classic Radar
                   </button>
                   <button
                     className={`color-mode-button ${colorMode === 'pns' ? 'active' : ''}`}
-                    onClick={() => {
-                      setColorMode('pns');
-                      localStorage.setItem('colorMode', 'pns');
-                    }}
+                    onClick={() => setColorMode('pns')}
                   >
                     PnS
                   </button>
