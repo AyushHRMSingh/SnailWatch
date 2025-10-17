@@ -271,7 +271,7 @@ function WearOS() {
     }
   };
 
-  // Geolocation effect
+  // Geolocation effect with retry logic
   useEffect(() => {
     const savedUseCustom = localStorage.getItem('useCustomLocation') === 'true';
     const savedLat = localStorage.getItem('customLat');
@@ -287,28 +287,40 @@ function WearOS() {
       }
     }
 
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lon: longitude });
-          setLocationError(null);
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          setLocationError('Location denied');
-          setUserLocation({ lat: 33.9416, lon: -118.4085 });
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
-    } else {
-      setLocationError('No GPS');
-      setUserLocation({ lat: 33.9416, lon: -118.4085 });
-    }
+    const requestLocation = (retryCount = 0) => {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            setUserLocation({ lat: latitude, lon: longitude });
+            setLocationError(null);
+          },
+          (error) => {
+            console.error('Geolocation error:', error);
+            
+            // Retry up to 2 times with increasing timeout
+            if (retryCount < 2) {
+              console.log(`Retrying geolocation (attempt ${retryCount + 2}/3)...`);
+              setTimeout(() => requestLocation(retryCount + 1), 2000);
+            } else {
+              // After retries, use default location
+              setLocationError('Location denied');
+              setUserLocation({ lat: 33.9416, lon: -118.4085 });
+            }
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 15000 + (retryCount * 5000), // Increase timeout with each retry
+            maximumAge: 0
+          }
+        );
+      } else {
+        setLocationError('No GPS');
+        setUserLocation({ lat: 33.9416, lon: -118.4085 });
+      }
+    };
+
+    requestLocation();
   }, []);
 
   // Fetch data effect

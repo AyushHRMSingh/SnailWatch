@@ -110,7 +110,7 @@
 }
 
 .wearos-title {
-  font-size: 5vmin;
+  font-size: 8vmin;
   font-weight: 900;
   letter-spacing: 0.2em;
   margin: 0;
@@ -133,14 +133,14 @@
 }
 
 .wearos-stat {
-  font-size: 3.5vmin;
+  font-size: 5vmin;
   font-weight: 700;
   color: var(--color-secondary);
   text-shadow: 0 0 5px var(--color-shadow);
 }
 
 .wearos-error {
-  font-size: 2.5vmin;
+  font-size: 4vmin;
   color: #ffaa00;
   margin-top: 2vmin;
 }
@@ -192,7 +192,7 @@
 }
 
 .wearos-card-title {
-  font-size: 4.5vmin;
+  font-size: 7vmin;
   font-weight: 900;
   letter-spacing: 0.15em;
   margin: 0;
@@ -207,7 +207,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 2.5vmin;
+  gap: 4vmin;
   flex: 1;
   overflow-y: auto;
   padding-right: 1.5vmin;
@@ -220,11 +220,11 @@
 .wearos-detail {
   display: flex;
   align-items: flex-start;
-  gap: 2.5vmin;
-  padding: 2vmin 2.5vmin;
+  gap: 3vmin;
+  padding: 3.5vmin 3vmin;
   background: rgba(0,0,0,0.6);
-  border-left: 2px solid var(--color-primary);
-  border-radius: 1.5vmin;
+  border-left: 3px solid var(--color-primary);
+  border-radius: 2vmin;
   animation: slide-in-detail 0.4s ease-out;
 }
 
@@ -248,7 +248,7 @@
 }
 
 .wearos-detail-label {
-  font-size: 2.5vmin;
+  font-size: 4vmin;
   font-weight: 700;
   color: var(--color-secondary);
   text-transform: uppercase;
@@ -257,11 +257,12 @@
 }
 
 .wearos-detail-value {
-  font-size: 3.5vmin;
+  font-size: 5.5vmin;
   font-weight: 600;
   color: var(--color-primary);
   word-wrap: break-word;
   overflow-wrap: break-word;
+  line-height: 1.3;
 }
 
 /* Footer stats */
@@ -275,7 +276,7 @@
 }
 
 .wearos-footer-stat {
-  font-size: 3vmin;
+  font-size: 4.5vmin;
   font-weight: 700;
   color: var(--color-secondary);
   text-shadow: 0 0 5px var(--color-shadow);
@@ -344,7 +345,7 @@
 }
 
 .wearos-glitch-text {
-  font-size: 6vmin;
+  font-size: 8vmin;
   color: var(--color-primary);
   text-shadow: 
     0 0 10px var(--color-primary), 
