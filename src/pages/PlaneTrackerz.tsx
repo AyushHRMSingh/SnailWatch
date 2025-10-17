@@ -252,7 +252,7 @@ function PlaneTrackerz() {
     mapInstance.on('load', () => {
       if (trackedAircraft.Origin?.lon && trackedAircraft.Origin?.lat) {
         const originEl = document.createElement('div');
-        originEl.innerHTML = '🛫';
+        originEl.innerHTML = '🛬';
         originEl.style.fontSize = '32px';
         originEl.title = `Origin: ${trackedAircraft.Origin.iata_code}`;
         new maplibregl.Marker({ element: originEl })
@@ -262,7 +262,7 @@ function PlaneTrackerz() {
 
       if (trackedAircraft.Destination?.lon && trackedAircraft.Destination?.lat) {
         const destEl = document.createElement('div');
-        destEl.innerHTML = '🛬';
+        destEl.innerHTML = '🛫';
         destEl.style.fontSize = '32px';
         destEl.title = `Destination: ${trackedAircraft.Destination.iata_code}`;
         new maplibregl.Marker({ element: destEl })
