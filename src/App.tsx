@@ -103,6 +103,7 @@ function App() {
   const [isLoadingRepo, setIsLoadingRepo] = useState(LOAD_LOCAL_DATABASE);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('soundEnabled') !== 'false'); // Default true
+  const [colorMode, setColorMode] = useState<'classic' | 'pns'>(() => (localStorage.getItem('colorMode') as 'classic' | 'pns') || 'pns');
 
   const previousAircraft = useRef(new Set<string>());
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -112,6 +113,28 @@ function App() {
   const previousLocation = useRef<{ lat: number; lon: number } | null>(null);
   const previousRadius = useRef<string | null>(null);
   const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
+
+  // Color schemes
+  const colorSchemes = {
+    classic: {
+      primary: '#00ff00',
+      secondary: '#00ff88',
+      accent: '#00ff44',
+      background: 'rgba(0,32,0,0.95)',
+      bgDark: '#000800',
+      shadow: 'rgba(0,255,0,0.8)',
+    },
+    pns: {
+      primary: 'rgb(218, 193, 93)',
+      secondary: 'rgb(255, 255, 255)',
+      accent: 'rgb(16, 8, 82)',
+      background: 'rgba(16, 8, 82, 0.95)',
+      bgDark: 'rgb(16, 8, 82)',
+      shadow: 'rgba(218, 193, 93, 0.8)',
+    },
+  };
+
+  const currentColors = colorSchemes[colorMode];
 
   const resetMapView = () => {
     if (!map.current || !userLocation) return;
@@ -538,6 +561,17 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Apply color scheme to CSS variables
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--color-primary', currentColors.primary);
+    root.style.setProperty('--color-secondary', currentColors.secondary);
+    root.style.setProperty('--color-accent', currentColors.accent);
+    root.style.setProperty('--color-background', currentColors.background);
+    root.style.setProperty('--color-bg-dark', currentColors.bgDark);
+    root.style.setProperty('--color-shadow', currentColors.shadow);
+  }, [colorMode]);
+
   // Initialize map when aircraft is selected
   useEffect(() => {
     if (!mapContainer.current || !userLocation || !selectedAircraftDetail) return;
@@ -636,7 +670,7 @@ function App() {
         type: 'fill',
         source: 'scanner-range',
         paint: {
-          'fill-color': '#00ff00',
+          'fill-color': currentColors.primary,
           'fill-opacity': 0.1
         }
       });
@@ -646,7 +680,7 @@ function App() {
         type: 'line',
         source: 'scanner-range',
         paint: {
-          'line-color': '#00ff00',
+          'line-color': currentColors.primary,
           'line-width': 2,
           'line-opacity': 0.8
         }
@@ -717,7 +751,7 @@ function App() {
         planeMarker.current = null;
       }
     };
-  }, [selectedAircraftDetail, aircraft, userLocation, radius]);
+  }, [selectedAircraftDetail, aircraft, userLocation, radius, colorMode]);
 
   return (
     <div className="App">
@@ -729,7 +763,7 @@ function App() {
       {isLoadingRepo && (
         <div className="loading-overlay">
           <div className="loading-content">
-            <Radio size={80} color="#00ff00" strokeWidth={2} className="loading-icon" />
+            <Radio size={80} color={currentColors.primary} strokeWidth={2} className="loading-icon" />
             <h1 className="loading-text">LOADING DATABASE</h1>
             <div className="loading-bar">
               <div className="loading-progress" style={{ width: `${loadingProgress}%` }}></div>
@@ -742,7 +776,7 @@ function App() {
       {isRevealing && (
         <div className="reveal-overlay reveal-overlay-enter">
           <div className="reveal-content">
-            <Radio size={80} color="#00ff00" strokeWidth={2} style={{ marginBottom: '1rem', filter: 'drop-shadow(0 0 20px rgba(0, 255, 0, 0.8))' }} />
+            <Radio size={80} color={currentColors.primary} strokeWidth={2} style={{ marginBottom: '1rem', filter: `drop-shadow(0 0 20px ${currentColors.shadow})` }} />
             <h1 className="glitch-text">NEW AIRCRAFT DETECTED</h1>
           </div>
         </div>
@@ -753,7 +787,7 @@ function App() {
         onClick={() => setShowSettings(true)}
         aria-label="Settings"
       >
-        <Settings size={24} color="#00ff00" />
+        <Settings size={24} color={currentColors.primary} />
       </button>
 
       <button 
@@ -765,7 +799,7 @@ function App() {
         }}
         aria-label="Toggle Sound"
       >
-        {soundEnabled ? <Volume2 size={24} color="#00ff00" /> : <VolumeX size={24} color="#ff0000" />}
+        {soundEnabled ? <Volume2 size={24} color={currentColors.primary} /> : <VolumeX size={24} color="#ff0000" />}
       </button>
 
       {showSettings && (
@@ -774,7 +808,7 @@ function App() {
             <div className="settings-header">
               <h2>SETTINGS</h2>
               <button className="close-button" onClick={() => setShowSettings(false)}>
-                <X size={24} color="#00ff00" />
+                <X size={24} color={currentColors.primary} />
               </button>
             </div>
             
@@ -825,6 +859,30 @@ function App() {
                   placeholder="e.g., 20"
                   className="settings-input"
                 />
+              </div>
+
+              <div className="settings-section">
+                <label>Color Mode</label>
+                <div className="color-mode-buttons">
+                  <button
+                    className={`color-mode-button ${colorMode === 'classic' ? 'active' : ''}`}
+                    onClick={() => {
+                      setColorMode('classic');
+                      localStorage.setItem('colorMode', 'classic');
+                    }}
+                  >
+                    Classic Radar
+                  </button>
+                  <button
+                    className={`color-mode-button ${colorMode === 'pns' ? 'active' : ''}`}
+                    onClick={() => {
+                      setColorMode('pns');
+                      localStorage.setItem('colorMode', 'pns');
+                    }}
+                  >
+                    PnS
+                  </button>
+                </div>
               </div>
 
               <button 
@@ -881,7 +939,10 @@ function App() {
       )}
 
       <header className="App-header">
-        <h1>Snailwatch</h1>
+        <h1>PlaneWatch</h1>
+        <p style={{ fontSize: '0.75rem', opacity: 0.6, marginTop: '-0.5rem', marginBottom: '0.5rem', fontStyle: 'italic' }}>
+          by Plane and Simple
+        </p>
         {userLocation && (
           <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>
             📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)} • {radius} NM radius
@@ -900,7 +961,7 @@ function App() {
           <>
             <div className="card-header card-header-enter">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Radio size={32} color="#00ff00" strokeWidth={2.5} style={{ filter: 'drop-shadow(0 0 8px rgba(0, 255, 0, 0.6))' }} />
+                <Radio size={32} color={currentColors.primary} strokeWidth={2.5} style={{ filter: `drop-shadow(0 0 8px ${currentColors.shadow})` }} />
                 <h2><TypewriterText text="SCANNING..." speed={80} /></h2>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.3rem', fontSize: '0.85rem', opacity: 0.7 }}>
@@ -917,7 +978,7 @@ function App() {
           <>
             <div className="card-header card-header-enter">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Plane size={32} color="#00ff00" strokeWidth={2.5} style={{ filter: 'drop-shadow(0 0 8px rgba(0, 255, 0, 0.6))' }} />
+                <Plane size={32} color={currentColors.primary} strokeWidth={2.5} style={{ filter: `drop-shadow(0 0 8px ${currentColors.shadow})` }} />
                 <h2><TypewriterText text="AIRCRAFT IDENTIFIED" speed={80} /></h2>
                   <a 
                     href={`https://www.flightradar24.com/${selectedAircraftDetail.Registration.toLowerCase().replace(/[^a-z0-9]/g, '')}`}
@@ -926,7 +987,7 @@ function App() {
                     style={{ marginLeft: '10px', display: 'inline-flex', alignItems: 'center' }}
                     title="View on FlightRadar24"
                   >
-                    <ExternalLink size={24} color="#00ff00" strokeWidth={2} />
+                    <ExternalLink size={24} color={currentColors.primary} strokeWidth={2} />
                   </a>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.3rem', fontSize: '0.85rem', opacity: 0.7 }}>
@@ -936,7 +997,7 @@ function App() {
               </div>
               {selectedAircraftDetail.Origin && selectedAircraftDetail.Destination && (
                 <div className="detail-item detail-item-1">
-                  <Navigation size={24} color="#00ff00" strokeWidth={2} />
+                  <Navigation size={24} color={currentColors.primary} strokeWidth={2} />
                   <p>
                     <strong>Route:</strong>{' '}
                     <span 
@@ -957,46 +1018,46 @@ function App() {
               )}
               {selectedAircraftDetail.Airline && (
                 <div className="detail-item detail-item-2">
-                  <Plane size={24} color="#00ff00" strokeWidth={2} />
+                  <Plane size={24} color={currentColors.primary} strokeWidth={2} />
                   <p><strong>Airline:</strong> <TypewriterText text={`${selectedAircraftDetail.Airline.name} (${selectedAircraftDetail.Airline.iata})`} speed={60} /></p>
                 </div>
               )}
               <div className="detail-item detail-item-3">
-                <FileText size={24} color="#00ff00" strokeWidth={2} />
+                <FileText size={24} color={currentColors.primary} strokeWidth={2} />
                 <p><strong>Registration:</strong> <TypewriterText text={selectedAircraftDetail.Registration} speed={60} /></p>
               </div>
               <div className="detail-item detail-item-4">
-                <Plane size={24} color="#00ff00" strokeWidth={2} />
+                <Plane size={24} color={currentColors.primary} strokeWidth={2} />
                 <p><strong>Type:</strong> <TypewriterText text={selectedAircraftDetail.Type} speed={60} /></p>
               </div>
               <div className="detail-item detail-item-5">
-                <Factory size={24} color="#00ff00" strokeWidth={2} />
+                <Factory size={24} color={currentColors.primary} strokeWidth={2} />
                 <p><strong>Manufacturer:</strong> <TypewriterText text={selectedAircraftDetail.Manufacturer} speed={60} /></p>
               </div>
               <div className="detail-item detail-item-6">
-                <Users size={24} color="#00ff00" strokeWidth={2} />
+                <Users size={24} color={currentColors.primary} strokeWidth={2} />
                 <p><strong>Owner:</strong> <TypewriterText text={selectedAircraftDetail.RegisteredOwners} speed={60} /></p>
               </div>
               {selectedAircraftDetail.Callsign && (
                 <div className="detail-item detail-item-7">
-                  <Navigation size={24} color="#00ff00" strokeWidth={2} />
+                  <Navigation size={24} color={currentColors.primary} strokeWidth={2} />
                   <p><strong>Callsign:</strong> <TypewriterText text={selectedAircraftDetail.Callsign} speed={60} /></p>
                 </div>
               )}
               {selectedAircraftDetail.Altitude !== undefined && (
                 <div className="detail-item detail-item-8">
-                  <Mountain size={24} color="#00ff00" strokeWidth={2} />
+                  <Mountain size={24} color={currentColors.primary} strokeWidth={2} />
                   <p><strong>Altitude:</strong> <TypewriterText text={selectedAircraftDetail.Altitude === 'ground' ? 'On Ground' : `${Math.round(selectedAircraftDetail.Altitude)} ft`} speed={60} /></p>
                 </div>
               )}
               {selectedAircraftDetail.Speed !== undefined && (
                 <div className="detail-item detail-item-9">
-                  <Gauge size={24} color="#00ff00" strokeWidth={2} />
+                  <Gauge size={24} color={currentColors.primary} strokeWidth={2} />
                   <p><strong>Speed:</strong> <TypewriterText text={`${selectedAircraftDetail.Speed} km/h`} speed={60} /></p>
                 </div>
               )}
               <div className="detail-item detail-item-10">
-                <Radio size={24} color="#00ff00" strokeWidth={2} />
+                <Radio size={24} color={currentColors.primary} strokeWidth={2} />
                 <p><strong>ICAO:</strong> <TypewriterText text={selectedAircraftDetail.ICAO} speed={60} /></p>
               </div>
             </>
@@ -1012,7 +1073,7 @@ function App() {
             onClick={resetMapView}
             title="Reset map view"
           >
-            <RotateCcw size={20} color="#00ff00" />
+            <RotateCcw size={20} color={currentColors.primary} />
           </button>
         )}
       </div>
