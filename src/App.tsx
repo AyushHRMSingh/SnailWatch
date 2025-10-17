@@ -4,33 +4,6 @@ import { FileText, Plane, Factory, Users, Radio, Settings, X, Navigation, Mounta
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-// Typewriter hook
-const useTypewriter = (text: string, speed: number = 50) => {
-  const [displayText, setDisplayText] = useState('');
-  
-  useEffect(() => {
-    if (!text) {
-      setDisplayText('');
-      return;
-    }
-    
-    setDisplayText('');
-    let i = 0;
-    const timer = setInterval(() => {
-      if (i < text.length) {
-        setDisplayText(text.slice(0, i + 1));
-        i++;
-      } else {
-        clearInterval(timer);
-      }
-    }, speed);
-    
-    return () => clearInterval(timer);
-  }, [text, speed]);
-  
-  return displayText;
-};
-
 // --- Data Interfaces ---
 interface Aircraft {
   hex: string;
@@ -77,11 +50,6 @@ interface AircraftDetail {
     country: string;
   };
 }
-
-const TypewriterText = ({ text, speed = 50 }: { text: string; speed?: number }) => {
-  const displayText = useTypewriter(text, speed);
-  return <span>{displayText}</span>;
-};
 
 // Configuration: Set to false to skip loading the large local JSON database
 // This speeds up loading over slow connections (e.g., ngrok tunnels)
@@ -748,6 +716,7 @@ function App() {
         el.style.backgroundRepeat = 'no-repeat';
         el.style.backgroundPosition = 'center';
         el.style.transformOrigin = 'center center';
+        el.style.zIndex = isSelected ? '1000' : '1';
         
         // Rotate based on track (heading)
         // Aviation heading: 0° = North, 90° = East, 180° = South, 270° = West
@@ -810,6 +779,7 @@ function App() {
         el.style.backgroundRepeat = 'no-repeat';
         el.style.backgroundPosition = 'center';
         el.style.transformOrigin = 'center center';
+        el.style.zIndex = isSelected ? '1000' : '1';
         
         // Rotate based on track (heading)
         // Aviation heading: 0° = North, 90° = East, 180° = South, 270° = West
@@ -842,6 +812,31 @@ function App() {
       }
     };
   }, [selectedAircraftDetail, aircraft, userLocation, radius, colorMode]);
+
+  // Separate effect to update altitude and speed for selected aircraft
+  useEffect(() => {
+    if (!selectedAircraftDetail || selectedAircraftDetail.error) return;
+    
+    const selectedPlane = aircraft.find(plane => 
+      selectedAircraftDetail.ICAO && plane.hex.replace('~', '') === selectedAircraftDetail.ICAO
+    );
+    
+    if (selectedPlane) {
+      setSelectedAircraftDetail(prev => {
+        if (!prev || prev.error) return prev;
+        // Only update if values actually changed to avoid unnecessary re-renders
+        if (prev.Altitude === selectedPlane.alt_baro && 
+            prev.Speed === (selectedPlane.gs ? Math.round(selectedPlane.gs * 1.852) : prev.Speed)) {
+          return prev;
+        }
+        return {
+          ...prev,
+          Altitude: selectedPlane.alt_baro,
+          Speed: selectedPlane.gs ? Math.round(selectedPlane.gs * 1.852) : prev.Speed
+        };
+      });
+    }
+  }, [aircraft]); // Only depend on aircraft array changes
 
   return (
     <div className="App">
@@ -1076,7 +1071,7 @@ function App() {
             <div className="card-header card-header-enter">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Radio size={32} color={currentColors.primary} strokeWidth={2.5} style={{ filter: `drop-shadow(0 0 8px ${currentColors.shadow})` }} />
-                <h2><TypewriterText text="SCANNING..." speed={80} /></h2>
+                <h2>SCANNING...</h2>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.3rem', fontSize: '0.85rem', opacity: 0.7 }}>
                 <div>⏱ {countdown}s</div>
@@ -1086,14 +1081,14 @@ function App() {
           </>
         ) : selectedAircraftDetail.error ? (
           <div className="detail-item detail-item-1">
-            <p>Aircraft <strong><TypewriterText text={selectedAircraftDetail.Registration} speed={40} /></strong> <TypewriterText text={selectedAircraftDetail.error} speed={30} /></p>
+            <p>Aircraft <strong>{selectedAircraftDetail.Registration}</strong> {selectedAircraftDetail.error}</p>
           </div>
         ) : (
           <>
             <div className="card-header card-header-enter">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Plane size={32} color={currentColors.primary} strokeWidth={2.5} style={{ filter: `drop-shadow(0 0 8px ${currentColors.shadow})` }} />
-                <h2><TypewriterText text="AIRCRAFT IDENTIFIED" speed={80} /></h2>
+                <h2>AIRCRAFT IDENTIFIED</h2>
                   <a 
                     href={`https://www.flightradar24.com/${selectedAircraftDetail.Registration.toLowerCase().replace(/[^a-z0-9]/g, '')}`}
                     target="_blank"
@@ -1135,56 +1130,53 @@ function App() {
                   <Users size={24} color={currentColors.primary} strokeWidth={2} />
                   <p>
                     <strong>{selectedAircraftDetail.Airline ? 'Airline' : 'Owner'}:</strong>{' '}
-                    <TypewriterText 
-                      text={selectedAircraftDetail.Airline 
-                        ? `${selectedAircraftDetail.Airline.name} (${selectedAircraftDetail.Airline.iata})` 
-                        : selectedAircraftDetail.RegisteredOwners || ''
-                      } 
-                      speed={60} 
-                    />
+                    {selectedAircraftDetail.Airline 
+                      ? `${selectedAircraftDetail.Airline.name} (${selectedAircraftDetail.Airline.iata})` 
+                      : selectedAircraftDetail.RegisteredOwners || ''
+                    }
                   </p>
                 </div>
               )}
               {selectedAircraftDetail.Registration && (
                 <div className="detail-item detail-item-3">
                   <FileText size={24} color={currentColors.primary} strokeWidth={2} />
-                  <p><strong>Registration:</strong> <TypewriterText text={selectedAircraftDetail.Registration} speed={60} /></p>
+                  <p><strong>Registration:</strong> {selectedAircraftDetail.Registration}</p>
                 </div>
               )}
               {selectedAircraftDetail.Type && (
                 <div className="detail-item detail-item-4">
                   <Plane size={24} color={currentColors.primary} strokeWidth={2} />
-                  <p><strong>Type:</strong> <TypewriterText text={selectedAircraftDetail.Type} speed={60} /></p>
+                  <p><strong>Type:</strong> {selectedAircraftDetail.Type}</p>
                 </div>
               )}
               {selectedAircraftDetail.Manufacturer && (
                 <div className="detail-item detail-item-5">
                   <Factory size={24} color={currentColors.primary} strokeWidth={2} />
-                  <p><strong>Manufacturer:</strong> <TypewriterText text={selectedAircraftDetail.Manufacturer} speed={60} /></p>
+                  <p><strong>Manufacturer:</strong> {selectedAircraftDetail.Manufacturer}</p>
                 </div>
               )}
               {selectedAircraftDetail.Callsign && (
                 <div className="detail-item detail-item-7">
                   <Navigation size={24} color={currentColors.primary} strokeWidth={2} />
-                  <p><strong>Callsign:</strong> <TypewriterText text={selectedAircraftDetail.Callsign} speed={60} /></p>
+                  <p><strong>Callsign:</strong> {selectedAircraftDetail.Callsign}</p>
                 </div>
               )}
               {selectedAircraftDetail.Altitude !== undefined && (
                 <div className="detail-item detail-item-8">
                   <Mountain size={24} color={currentColors.primary} strokeWidth={2} />
-                  <p><strong>Altitude:</strong> <TypewriterText text={selectedAircraftDetail.Altitude === 'ground' ? 'On Ground' : `${Math.round(selectedAircraftDetail.Altitude)} ft`} speed={60} /></p>
+                  <p><strong>Altitude:</strong> {selectedAircraftDetail.Altitude === 'ground' ? 'On Ground' : `${Math.round(selectedAircraftDetail.Altitude)} ft`}</p>
                 </div>
               )}
               {selectedAircraftDetail.Speed !== undefined && (
                 <div className="detail-item detail-item-9">
                   <Gauge size={24} color={currentColors.primary} strokeWidth={2} />
-                  <p><strong>Speed:</strong> <TypewriterText text={`${selectedAircraftDetail.Speed} km/h`} speed={60} /></p>
+                  <p><strong>Speed:</strong> {selectedAircraftDetail.Speed} km/h</p>
                 </div>
               )}
               {selectedAircraftDetail.ICAO && (
                 <div className="detail-item detail-item-10">
                   <Radio size={24} color={currentColors.primary} strokeWidth={2} />
-                  <p><strong>ICAO:</strong> <TypewriterText text={selectedAircraftDetail.ICAO} speed={60} /></p>
+                  <p><strong>ICAO:</strong> {selectedAircraftDetail.ICAO}</p>
                 </div>
               )}
             </>
