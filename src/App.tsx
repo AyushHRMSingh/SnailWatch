@@ -109,6 +109,7 @@ function App() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const planeMarker = useRef<maplibregl.Marker | null>(null);
+  const allMarkers = useRef<maplibregl.Marker[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousLocation = useRef<{ lat: number; lon: number } | null>(null);
   const previousRadius = useRef<string | null>(null);
@@ -120,17 +121,17 @@ function App() {
       primary: '#00ff00',
       secondary: '#00ff88',
       accent: '#00ff44',
-      background: 'rgba(0,32,0,0.95)',
+      background: 'rgba(0,40,0,0.98)',
       bgDark: '#000800',
-      shadow: 'rgba(0,255,0,0.8)',
+      shadow: 'rgba(0,255,0,0.9)',
     },
     pns: {
-      primary: 'rgb(218, 193, 93)',
+      primary: 'rgb(238, 213, 113)',
       secondary: 'rgb(255, 255, 255)',
       accent: 'rgb(16, 8, 82)',
-      background: 'rgba(16, 8, 82, 0.95)',
+      background: 'rgba(20, 10, 100, 0.98)',
       bgDark: 'rgb(16, 8, 82)',
-      shadow: 'rgba(218, 193, 93, 0.8)',
+      shadow: 'rgba(238, 213, 113, 0.9)',
     },
   };
 
@@ -139,6 +140,7 @@ function App() {
   const resetMapView = () => {
     if (!map.current || !userLocation) return;
     
+    // Only adjust map positioning - do NOT remove markers
     // Calculate bounds based on scanner range
     const radiusInMeters = parseFloat(radius) * 1852; // Convert NM to meters
     const latDelta = (radiusInMeters / 111320);
@@ -692,56 +694,109 @@ function App() {
       userMarkerEl.innerHTML = '📍';
       userMarkerEl.style.fontSize = '24px';
       
-      new maplibregl.Marker({ element: userMarkerEl })
+      const userMarker = new maplibregl.Marker({ element: userMarkerEl })
         .setLngLat([userLocation.lon, userLocation.lat])
         .addTo(mapInstance);
+      
+      allMarkers.current.push(userMarker);
 
-      // Create a custom plane icon
-      const el = document.createElement('div');
-      el.className = 'plane-marker';
-      el.innerHTML = '✈️';
-      el.style.fontSize = '24px';
-      el.style.cursor = 'pointer';
-      // Rotate based on track (heading), use calc_track or dir as fallback
-      const heading = selectedAircraft.track ?? selectedAircraft.calc_track ?? selectedAircraft.dir;
-      if (heading !== undefined) {
-        el.style.transform = `rotate(${heading}deg)`;
-      }
+      // Add markers for ALL aircraft
+      aircraft.forEach((plane) => {
+        const isSelected = selectedAircraft && plane.hex === selectedAircraft.hex;
+        const el = document.createElement('div');
+        el.className = isSelected ? 'selected-plane-marker' : 'plane-marker';
+        el.style.width = isSelected ? '40px' : '32px';
+        el.style.height = isSelected ? '40px' : '32px';
+        el.style.cursor = 'pointer';
+        el.style.backgroundImage = isSelected ? 'url(/KL.svg)' : 'url(/plane.png)';
+        el.style.backgroundSize = 'contain';
+        el.style.backgroundRepeat = 'no-repeat';
+        el.style.backgroundPosition = 'center';
+        el.style.transformOrigin = 'center center';
+        
+        // Rotate based on track (heading)
+        // Aviation heading: 0° = North, 90° = East, 180° = South, 270° = West
+        // If plane.png points East by default, subtract 90°; if it points North, use heading directly
+        console.log(plane.track, plane.dir, plane.calc_track);
+        const heading = plane.track ?? plane.dir ?? plane.calc_track;
+        const rotation = heading !== undefined ? heading - 90 : 0;
 
-      // Add plane marker at aircraft's location
-      planeMarker.current = new maplibregl.Marker({ element: el, rotation: heading || 0 })
-        .setLngLat([selectedAircraft.lon, selectedAircraft.lat])
-        .addTo(mapInstance);
+        const marker = new maplibregl.Marker({ 
+          element: el, 
+          rotation: rotation,
+          rotationAlignment: 'map'
+        })
+          .setLngLat([plane.lon, plane.lat])
+          .addTo(mapInstance);
+        
+        allMarkers.current.push(marker);
+        
+        // Store selected plane marker reference
+        if (isSelected) {
+          planeMarker.current = marker;
+        }
+      });
       });
     } else if (map.current) {
-      // Map exists, update or create the plane marker
+      // Map exists - clear all markers and recreate them (except user marker)
+      // Remove all existing markers
+      allMarkers.current.forEach(marker => marker.remove());
+      allMarkers.current = [];
+      
       if (planeMarker.current) {
-        // Update existing marker position and rotation
-        planeMarker.current.setLngLat([selectedAircraft.lon, selectedAircraft.lat]);
-        
-        // Update rotation if heading changed
-        const heading = selectedAircraft.track ?? selectedAircraft.calc_track ?? selectedAircraft.dir;
-        if (heading !== undefined) {
-          const el = planeMarker.current.getElement();
-          el.style.transform = `rotate(${heading}deg)`;
-        }
-      } else {
-        // Create new marker only if it doesn't exist
-        const el = document.createElement('div');
-        el.className = 'plane-marker';
-        el.innerHTML = '✈️';
-        el.style.fontSize = '24px';
-        el.style.cursor = 'pointer';
-        // Rotate based on track (heading), use calc_track or dir as fallback
-        const heading = selectedAircraft.track ?? selectedAircraft.calc_track ?? selectedAircraft.dir;
-        if (heading !== undefined) {
-          el.style.transform = `rotate(${heading}deg)`;
-        }
-
-        planeMarker.current = new maplibregl.Marker({ element: el, rotation: heading || 0 })
-          .setLngLat([selectedAircraft.lon, selectedAircraft.lat])
-          .addTo(map.current);
+        planeMarker.current.remove();
+        planeMarker.current = null;
       }
+      
+      const mapInstance = map.current;
+      
+      // Recreate user location marker
+      const userMarkerEl = document.createElement('div');
+      userMarkerEl.className = 'user-marker';
+      userMarkerEl.innerHTML = '📍';
+      userMarkerEl.style.fontSize = '24px';
+      
+      const userMarker = new maplibregl.Marker({ element: userMarkerEl })
+        .setLngLat([userLocation.lon, userLocation.lat])
+        .addTo(mapInstance);
+      
+      allMarkers.current.push(userMarker);
+      
+      // Add markers for ALL aircraft
+      aircraft.forEach((plane) => {
+        const isSelected = selectedAircraft && plane.hex === selectedAircraft.hex;
+        const el = document.createElement('div');
+        el.className = isSelected ? 'selected-plane-marker' : 'plane-marker';
+        el.style.width = isSelected ? '40px' : '32px';
+        el.style.height = isSelected ? '40px' : '32px';
+        el.style.cursor = 'pointer';
+        el.style.backgroundImage = isSelected ? 'url(/KL.svg)' : 'url(/plane.png)';
+        el.style.backgroundSize = 'contain';
+        el.style.backgroundRepeat = 'no-repeat';
+        el.style.backgroundPosition = 'center';
+        el.style.transformOrigin = 'center center';
+        
+        // Rotate based on track (heading)
+        // Aviation heading: 0° = North, 90° = East, 180° = South, 270° = West
+        // If plane.png points East by default, subtract 90°; if it points North, use heading directly
+        const heading = plane.track ?? plane.dir ?? plane.calc_track;
+        const rotation = heading !== undefined ? heading - 90 : 0;
+
+        const marker = new maplibregl.Marker({ 
+          element: el, 
+          rotation: rotation,
+          rotationAlignment: 'map'
+        })
+          .setLngLat([plane.lon, plane.lat])
+          .addTo(mapInstance);
+        
+        allMarkers.current.push(marker);
+        
+        // Store selected plane marker reference
+        if (isSelected) {
+          planeMarker.current = marker;
+        }
+      });
     }
     
     // Cleanup function to remove marker when component unmounts or aircraft changes
@@ -1022,22 +1077,30 @@ function App() {
                   <p><strong>Airline:</strong> <TypewriterText text={`${selectedAircraftDetail.Airline.name} (${selectedAircraftDetail.Airline.iata})`} speed={60} /></p>
                 </div>
               )}
-              <div className="detail-item detail-item-3">
-                <FileText size={24} color={currentColors.primary} strokeWidth={2} />
-                <p><strong>Registration:</strong> <TypewriterText text={selectedAircraftDetail.Registration} speed={60} /></p>
-              </div>
-              <div className="detail-item detail-item-4">
-                <Plane size={24} color={currentColors.primary} strokeWidth={2} />
-                <p><strong>Type:</strong> <TypewriterText text={selectedAircraftDetail.Type} speed={60} /></p>
-              </div>
-              <div className="detail-item detail-item-5">
-                <Factory size={24} color={currentColors.primary} strokeWidth={2} />
-                <p><strong>Manufacturer:</strong> <TypewriterText text={selectedAircraftDetail.Manufacturer} speed={60} /></p>
-              </div>
-              <div className="detail-item detail-item-6">
-                <Users size={24} color={currentColors.primary} strokeWidth={2} />
-                <p><strong>Owner:</strong> <TypewriterText text={selectedAircraftDetail.RegisteredOwners} speed={60} /></p>
-              </div>
+              {selectedAircraftDetail.Registration && (
+                <div className="detail-item detail-item-3">
+                  <FileText size={24} color={currentColors.primary} strokeWidth={2} />
+                  <p><strong>Registration:</strong> <TypewriterText text={selectedAircraftDetail.Registration} speed={60} /></p>
+                </div>
+              )}
+              {selectedAircraftDetail.Type && (
+                <div className="detail-item detail-item-4">
+                  <Plane size={24} color={currentColors.primary} strokeWidth={2} />
+                  <p><strong>Type:</strong> <TypewriterText text={selectedAircraftDetail.Type} speed={60} /></p>
+                </div>
+              )}
+              {selectedAircraftDetail.Manufacturer && (
+                <div className="detail-item detail-item-5">
+                  <Factory size={24} color={currentColors.primary} strokeWidth={2} />
+                  <p><strong>Manufacturer:</strong> <TypewriterText text={selectedAircraftDetail.Manufacturer} speed={60} /></p>
+                </div>
+              )}
+              {selectedAircraftDetail.RegisteredOwners && (
+                <div className="detail-item detail-item-6">
+                  <Users size={24} color={currentColors.primary} strokeWidth={2} />
+                  <p><strong>Owner:</strong> <TypewriterText text={selectedAircraftDetail.RegisteredOwners} speed={60} /></p>
+                </div>
+              )}
               {selectedAircraftDetail.Callsign && (
                 <div className="detail-item detail-item-7">
                   <Navigation size={24} color={currentColors.primary} strokeWidth={2} />
@@ -1056,10 +1119,12 @@ function App() {
                   <p><strong>Speed:</strong> <TypewriterText text={`${selectedAircraftDetail.Speed} km/h`} speed={60} /></p>
                 </div>
               )}
-              <div className="detail-item detail-item-10">
-                <Radio size={24} color={currentColors.primary} strokeWidth={2} />
-                <p><strong>ICAO:</strong> <TypewriterText text={selectedAircraftDetail.ICAO} speed={60} /></p>
-              </div>
+              {selectedAircraftDetail.ICAO && (
+                <div className="detail-item detail-item-10">
+                  <Radio size={24} color={currentColors.primary} strokeWidth={2} />
+                  <p><strong>ICAO:</strong> <TypewriterText text={selectedAircraftDetail.ICAO} speed={60} /></p>
+                </div>
+              )}
             </>
             )}
           </div>
