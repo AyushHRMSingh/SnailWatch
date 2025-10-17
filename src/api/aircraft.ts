@@ -87,54 +87,19 @@ export async function fetchAircraftInRadius(
   source: 'adsb.fi' | 'airplanes.live' = 'adsb.fi'
 ): Promise<Aircraft[]> {
   try {
-    let url: string;
-    let currentAircraft: Aircraft[] = [];
+    const url = `/api/lat/${lat}/lon/${lon}/dist/${distance}`;
+    const res = await fetch(url);
     
-    if (source === 'adsb.fi') {
-      url = `/api/lat/${lat}/lon/${lon}/dist/${distance}`;
-      const res = await fetch(url);
-      
-      if (!res.ok) {
-        if (res.status === 429) {
-          console.warn('Rate limited');
-          return [];
-        }
-        throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      if (res.status === 429) {
+        console.warn('Rate limited');
+        return [];
       }
-      
-      const data = await res.json();
-      currentAircraft = data.aircraft || [];
-    } else if (source === 'airplanes.live') {
-      url = `https://api.airplanes.live/v2/point/${lat}/${lon}/${distance}`;
-      const res = await fetch(url);
-      
-      if (!res.ok) {
-        if (res.status === 429) {
-          console.warn('Rate limited');
-          return [];
-        }
-        throw new Error(`HTTP ${res.status}`);
-      }
-      
-      const data = await res.json();
-      currentAircraft = (data.ac || []).map((plane: any) => ({
-        hex: plane.hex,
-        r: plane.r || '',
-        t: plane.t || plane.type || '',
-        desc: plane.desc,
-        flight: plane.flight,
-        lat: plane.lat,
-        lon: plane.lon,
-        alt_baro: plane.alt_baro,
-        gs: plane.gs,
-        mach: plane.mach,
-        track: plane.track,
-        calc_track: plane.calc_track,
-        dir: plane.dir
-      }));
+      throw new Error(`HTTP ${res.status}`);
     }
     
-    return currentAircraft;
+    const data = await res.json();
+    return data.aircraft || [];
   } catch (err) {
     console.error('Error fetching aircraft:', err);
     return [];

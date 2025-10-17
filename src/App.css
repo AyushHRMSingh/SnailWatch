@@ -10,8 +10,8 @@
 .App {
   position: relative;
   width: 100vw;
-  min-height: 100vh;
-  overflow: visible; /* Allow scrolling to navigation */
+  height: 100vh;
+  overflow: hidden;
   font-family: 'Rajdhani', sans-serif;
   color: var(--color-primary);
   text-align: center;

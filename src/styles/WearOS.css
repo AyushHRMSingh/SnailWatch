@@ -1,0 +1,421 @@
+/* WearOS Circular Watch Face Styles */
+
+:root {
+  --color-primary: #00ff00;
+  --color-secondary: #00ff88;
+  --color-accent: #00ff44;
+  --color-background: rgba(0,40,0,0.98);
+  --color-bg-dark: #000800;
+  --color-shadow: rgba(0,255,0,0.9);
+}
+
+.wearos-app {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--color-primary);
+  background: var(--color-bg-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Sound toggle button - center bottom */
+.wearos-sound-button {
+  position: fixed;
+  bottom: 2vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-background);
+  border: 2px solid var(--color-primary);
+  border-radius: 50%;
+  min-width: 10vmin;
+  min-height: 10vmin;
+  width: 10vmin;
+  height: 10vmin;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 0 15px var(--color-shadow);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.wearos-sound-button:hover {
+  box-shadow: 0 0 25px var(--color-shadow);
+  transform: translateX(-50%) scale(1.1);
+}
+
+.wearos-sound-button svg {
+  flex-shrink: 0;
+}
+
+/* Main circular container */
+.wearos-circular-container {
+  width: 100%;
+  height: 100%;
+  max-width: 100vmin;
+  max-height: 100vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, var(--color-bg-dark) 0%, #000000 100%);
+  border: 3px solid var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Radar animation background */
+.wearos-circular-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    repeating-radial-gradient(circle at center, 
+      color-mix(in srgb, var(--color-primary) 10%, transparent) 0 1px, 
+      transparent 1px 30px),
+    conic-gradient(from 0deg at 50% 50%, 
+      transparent 0deg, 
+      color-mix(in srgb, var(--color-primary) 20%, transparent) 30deg, 
+      transparent 60deg);
+  animation: radar-spin 6s linear infinite;
+  opacity: 0.4;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+@keyframes radar-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Scanning state */
+.wearos-scanning {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3vmin;
+  text-align: center;
+  z-index: 1;
+}
+
+.wearos-title {
+  font-size: 5vmin;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  margin: 0;
+  color: var(--color-primary);
+  text-shadow: 
+    0 0 10px var(--color-shadow),
+    0 0 20px var(--color-shadow);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.wearos-stats {
+  display: flex;
+  gap: 5vmin;
+  margin-top: 2vmin;
+}
+
+.wearos-stat {
+  font-size: 3.5vmin;
+  font-weight: 700;
+  color: var(--color-secondary);
+  text-shadow: 0 0 5px var(--color-shadow);
+}
+
+.wearos-error {
+  font-size: 2.5vmin;
+  color: #ffaa00;
+  margin-top: 2vmin;
+}
+
+/* Aircraft card */
+.wearos-aircraft-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  z-index: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4vmin 3vmin;
+  box-sizing: border-box;
+  /* Custom scrollbar for circular display */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary) transparent;
+}
+
+.wearos-aircraft-card::-webkit-scrollbar {
+  width: 4px;
+}
+
+.wearos-aircraft-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.wearos-aircraft-card::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 2px;
+}
+
+.wearos-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2vmin;
+  margin-bottom: 3vmin;
+  padding-bottom: 2vmin;
+  border-bottom: 2px solid var(--color-shadow);
+  width: 100%;
+}
+
+.wearos-card-title {
+  font-size: 4.5vmin;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  margin: 0;
+  color: var(--color-primary);
+  text-shadow: 
+    0 0 10px var(--color-shadow),
+    0 0 20px var(--color-shadow);
+}
+
+/* Card content - scrollable details */
+.wearos-card-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5vmin;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 1.5vmin;
+}
+
+.wearos-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 2.5vmin;
+  padding: 2vmin 2.5vmin;
+  background: rgba(0,0,0,0.6);
+  border-left: 2px solid var(--color-primary);
+  border-radius: 1.5vmin;
+  animation: slide-in-detail 0.4s ease-out;
+}
+
+@keyframes slide-in-detail {
+  from {
+    opacity: 0;
+    transform: translateX(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.wearos-detail-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5vmin;
+  flex: 1;
+  min-width: 0;
+}
+
+.wearos-detail-label {
+  font-size: 2.5vmin;
+  font-weight: 700;
+  color: var(--color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+
+.wearos-detail-value {
+  font-size: 3.5vmin;
+  font-weight: 600;
+  color: var(--color-primary);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Footer stats */
+.wearos-footer {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  margin-top: 3vmin;
+  padding-top: 2vmin;
+  border-top: 2px solid var(--color-shadow);
+}
+
+.wearos-footer-stat {
+  font-size: 3vmin;
+  font-weight: 700;
+  color: var(--color-secondary);
+  text-shadow: 0 0 5px var(--color-shadow);
+}
+
+/* Full screen reveal overlay */
+.wearos-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(circle at center, 
+      color-mix(in srgb, var(--color-primary) 15%, transparent) 0%, 
+      rgba(0,0,0,0.95) 60%),
+    rgba(0,0,0,0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(8px);
+  animation: reveal-fade-in 0.3s ease-out;
+}
+
+.wearos-reveal-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--color-primary) 3%, transparent) 0px,
+    transparent 2px,
+    transparent 4px,
+    color-mix(in srgb, var(--color-primary) 3%, transparent) 6px
+  );
+  animation: scan-lines 8s linear infinite;
+  pointer-events: none;
+}
+
+.wearos-reveal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  animation: reveal-scale-in 0.5s ease-out;
+}
+
+@keyframes reveal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes reveal-scale-in {
+  from { 
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to { 
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes scan-lines {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(20px); }
+}
+
+.wearos-glitch-text {
+  font-size: 6vmin;
+  color: var(--color-primary);
+  text-shadow: 
+    0 0 10px var(--color-primary), 
+    0 0 20px var(--color-primary),
+    0 0 30px var(--color-accent);
+  animation: glitch 0.5s infinite alternate, glow-pulse 1.5s ease-in-out infinite;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  margin: 0;
+  text-align: center;
+}
+
+@keyframes glitch {
+  0% { 
+    text-shadow: 
+      2px 2px var(--color-primary), 
+      -2px -2px #ff0000,
+      0 0 20px var(--color-primary); 
+  }
+  25% {
+    text-shadow: 
+      -2px 2px var(--color-primary), 
+      2px -2px #0000ff,
+      0 0 25px var(--color-primary);
+  }
+  50% {
+    text-shadow: 
+      2px -2px var(--color-primary), 
+      -2px 2px #ff0000,
+      0 0 30px var(--color-primary);
+  }
+  100% { 
+    text-shadow: 
+      -2px -2px var(--color-primary), 
+      2px 2px #0000ff,
+      0 0 35px var(--color-primary); 
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.5);
+  }
+}
+
+/* Responsive adjustments for smaller watches */
+@media (max-width: 320px) {
+  .wearos-title {
+    font-size: 1.4rem;
+  }
+  
+  .wearos-card-title {
+    font-size: 1.2rem;
+  }
+  
+  .wearos-detail {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+  
+  .wearos-detail-label {
+    font-size: 0.65rem;
+  }
+  
+  .wearos-detail-value {
+    font-size: 0.8rem;
+  }
+  
+  .wearos-glitch-text {
+    font-size: 1.5rem;
+  }
+}
+
+/* Square watch face adjustments */
+@media (shape: rect) {
+  .wearos-circular-container {
+    border-radius: 10%;
+  }
+}
