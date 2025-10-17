@@ -716,10 +716,10 @@ function App() {
         
         // Rotate based on track (heading)
         // Aviation heading: 0° = North, 90° = East, 180° = South, 270° = West
-        // If plane.png points East by default, subtract 90°; if it points North, use heading directly
-        console.log(plane.track, plane.dir, plane.calc_track);
         const heading = plane.track ?? plane.dir ?? plane.calc_track;
-        const rotation = heading !== undefined ? heading - 90 : 0;
+        console.log('Heading:', heading, 'for plane:', plane.hex);
+        // MapLibre rotation: 0° = East, so we need to add 90° to convert from North-based heading
+        const rotation = heading !== undefined ? heading : 0;
 
         const marker = new maplibregl.Marker({ 
           element: el, 
@@ -778,9 +778,9 @@ function App() {
         
         // Rotate based on track (heading)
         // Aviation heading: 0° = North, 90° = East, 180° = South, 270° = West
-        // If plane.png points East by default, subtract 90°; if it points North, use heading directly
         const heading = plane.track ?? plane.dir ?? plane.calc_track;
-        const rotation = heading !== undefined ? heading - 90 : 0;
+        // MapLibre rotation: 0° = East, so we need to add 90° to convert from North-based heading
+        const rotation = heading !== undefined ? heading : 0;
 
         const marker = new maplibregl.Marker({ 
           element: el, 
