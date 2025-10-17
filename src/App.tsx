@@ -104,6 +104,7 @@ function App() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('soundEnabled') !== 'false'); // Default true
   const [colorMode, setColorMode] = useState<'classic' | 'pns'>(() => (localStorage.getItem('colorMode') as 'classic' | 'pns') || 'pns');
+  const [dataSource, setDataSource] = useState<'adsb.fi' | 'airplanes.live'>(() => (localStorage.getItem('dataSource') as 'adsb.fi' | 'airplanes.live') || 'adsb.fi');
 
   const previousAircraft = useRef(new Set<string>());
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -113,7 +114,8 @@ function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousLocation = useRef<{ lat: number; lon: number } | null>(null);
   const previousRadius = useRef<string | null>(null);
-  const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
+  const REFRESH_INTERVAL = 10; // Check for new planes every 10 seconds
+  const fetchCounter = useRef(0); // Counter to track fetch cycles
 
   // Color schemes
   const colorSchemes = {
@@ -353,47 +355,80 @@ function App() {
       return;
     }
     
+    // Increment fetch counter
+    fetchCounter.current += 1;
+    const shouldCheckNewPlanes = fetchCounter.current % REFRESH_INTERVAL === 0;
+    
     // Don't block on icaoRepo - it's optional now
     
-    console.log('Fetching aircraft list...');
-    setCountdown(REFRESH_INTERVAL);
+    console.log('Fetching aircraft list from', dataSource, '(check new planes:', shouldCheckNewPlanes, ')');
+    
     try {
-      const url = `/api/lat/${userLocation.lat}/lon/${userLocation.lon}/dist/${radius}`;
-      console.log('Request:', url);
-      const res = await fetch(url);
-      console.log('Response:', res.status);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      console.log('Aircraft JSON:', data);
-
-      const currentAircraft: Aircraft[] = data.aircraft || [];
-      const currentHexCodes = new Set(currentAircraft.map(ac => ac.hex));
-
-      const newEntries = currentAircraft.filter(ac => !previousAircraft.current.has(ac.hex) && ac.r);
-      if (newEntries.length > 0) {
-        console.log('New aircraft detected:', newEntries);
-        
-        const newAircraft = newEntries[0];
-        fetchAircraftDetails(
-          newAircraft.hex.replace('~', ''),
-          newAircraft.flight?.trim(),
-          newAircraft.alt_baro,
-          newAircraft.mach,
-          newAircraft.gs,
-          newAircraft  // Pass the full aircraft object for default data
-        );
-        
-        // Play beep sound with delay to sync with reveal animation
-        setTimeout(() => {
-          if (audioRef.current && soundEnabled) {
-            audioRef.current.currentTime = 0; // Reset to start
-            audioRef.current.play().catch(err => console.log('Audio play failed:', err));
-          }
-        }, 300); // 300ms delay to sync with reveal animation
+      let url: string;
+      let currentAircraft: Aircraft[] = [];
+      
+      if (dataSource === 'adsb.fi') {
+        url = `/api/lat/${userLocation.lat}/lon/${userLocation.lon}/dist/${radius}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        currentAircraft = data.aircraft || [];
+      } else if (dataSource === 'airplanes.live') {
+        url = `https://api.airplanes.live/v2/point/${userLocation.lat}/${userLocation.lon}/${radius}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        // airplanes.live returns array directly with different field names
+        currentAircraft = (data.ac || []).map((plane: any) => ({
+          hex: plane.hex,
+          r: plane.r || '',
+          t: plane.t || plane.type || '',
+          desc: plane.desc,
+          flight: plane.flight,
+          lat: plane.lat,
+          lon: plane.lon,
+          alt_baro: plane.alt_baro,
+          gs: plane.gs,
+          mach: plane.mach,
+          track: plane.track,
+          calc_track: plane.calc_track,
+          dir: plane.dir
+        }));
       }
 
+      // Always update aircraft list
       setAircraft(currentAircraft);
-      previousAircraft.current = currentHexCodes;
+
+      // Only check for new planes every REFRESH_INTERVAL seconds
+      if (shouldCheckNewPlanes) {
+        setCountdown(REFRESH_INTERVAL);
+        const currentHexCodes = new Set(currentAircraft.map(ac => ac.hex));
+
+        const newEntries = currentAircraft.filter(ac => !previousAircraft.current.has(ac.hex) && ac.r);
+        if (newEntries.length > 0) {
+          console.log('New aircraft detected:', newEntries);
+          
+          const newAircraft = newEntries[0];
+          fetchAircraftDetails(
+            newAircraft.hex.replace('~', ''),
+            newAircraft.flight?.trim(),
+            newAircraft.alt_baro,
+            newAircraft.mach,
+            newAircraft.gs,
+            newAircraft  // Pass the full aircraft object for default data
+          );
+          
+          // Play beep sound with delay to sync with reveal animation
+          setTimeout(() => {
+            if (audioRef.current && soundEnabled) {
+              audioRef.current.currentTime = 0; // Reset to start
+              audioRef.current.play().catch(err => console.log('Audio play failed:', err));
+            }
+          }, 300); // 300ms delay to sync with reveal animation
+        }
+
+        previousAircraft.current = currentHexCodes;
+      }
     } catch (err) {
       console.error('Error fetching aircraft:', err);
     }
@@ -552,11 +587,11 @@ function App() {
       return;
     }
     
-    console.log('Starting fetchData and interval');
+    console.log('Starting fetchData and interval (fetching every 1 second)');
     fetchData();
-    const interval = setInterval(fetchData, REFRESH_INTERVAL * 1000);
+    const interval = setInterval(fetchData, 1000); // Fetch every 1 second
     return () => clearInterval(interval);
-  }, [userLocation, radius]);
+  }, [userLocation, radius, dataSource]);
 
   useEffect(() => {
     const timer = setInterval(() => setCountdown(prev => (prev > 0 ? prev - 1 : 0)), 1000);
@@ -914,6 +949,30 @@ function App() {
                   placeholder="e.g., 20"
                   className="settings-input"
                 />
+              </div>
+
+              <div className="settings-section">
+                <label>Data Source</label>
+                <div className="color-mode-buttons">
+                  <button
+                    className={`color-mode-button ${dataSource === 'adsb.fi' ? 'active' : ''}`}
+                    onClick={() => {
+                      setDataSource('adsb.fi');
+                      localStorage.setItem('dataSource', 'adsb.fi');
+                    }}
+                  >
+                    adsb.fi
+                  </button>
+                  <button
+                    className={`color-mode-button ${dataSource === 'airplanes.live' ? 'active' : ''}`}
+                    onClick={() => {
+                      setDataSource('airplanes.live');
+                      localStorage.setItem('dataSource', 'airplanes.live');
+                    }}
+                  >
+                    airplanes.live
+                  </button>
+                </div>
               </div>
 
               <div className="settings-section">
