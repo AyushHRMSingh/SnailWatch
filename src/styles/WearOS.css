@@ -161,6 +161,10 @@
   /* Custom scrollbar for circular display */
   scrollbar-width: thin;
   scrollbar-color: var(--color-primary) transparent;
+  /* Enable smooth scrolling for watch dial */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .wearos-aircraft-card::-webkit-scrollbar {
@@ -207,6 +211,10 @@
   flex: 1;
   overflow-y: auto;
   padding-right: 1.5vmin;
+  /* Enable smooth scrolling for watch dial */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .wearos-detail {
