@@ -6,6 +6,11 @@ import { useColors } from '../context/ColorContext';
 import { useNavigate } from 'react-router-dom';
 import '../App.css';
 
+// ===== CONFIGURABLE TIMERS =====
+const FETCH_INTERVAL_MS = 2500;  // How often to fetch aircraft data (milliseconds)
+const REFRESH_INTERVAL = 10;     // Check for new aircraft every N fetches (10 = every 25 seconds)
+// ===============================
+
 interface Aircraft {
   hex: string;
   r: string;
@@ -48,7 +53,6 @@ function PlaneWatcherz() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousLocation = useRef<{ lat: number; lon: number } | null>(null);
   const previousRadius = useRef<string | null>(null);
-  const REFRESH_INTERVAL = 10;
   const fetchCounter = useRef(0);
 
   const searchLocation = async () => {
@@ -182,7 +186,7 @@ function PlaneWatcherz() {
     if (!userLocation) return;
     
     fetchData();
-    const interval = setInterval(fetchData, 2500); // Fetch every 2.5 seconds
+    const interval = setInterval(fetchData, FETCH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [userLocation, radius, dataSource]);
 

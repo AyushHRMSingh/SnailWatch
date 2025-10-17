@@ -5,6 +5,12 @@ import { ArrowLeft } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '../App.css';
+
+// ===== CONFIGURABLE TIMERS =====
+const FETCH_INTERVAL_MS = 2500; // How often to fetch aircraft position (milliseconds)
+const SEARCH_RADIUS_NM = 10;    // Search radius around last known position (nautical miles)
+// ===============================
+
 interface Aircraft {
   hex: string;
   r: string;
@@ -76,8 +82,8 @@ function PlaneTrackerz() {
 
     const fetchAircraft = async () => {
       try {
-        // Use a small radius (10 NM) around the last known position to find the aircraft
-        const url = `/api/lat/${currentSearchLat}/lon/${currentSearchLon}/dist/10`;
+        // Use configurable radius around the last known position to find the aircraft
+        const url = `/api/lat/${currentSearchLat}/lon/${currentSearchLon}/dist/${SEARCH_RADIUS_NM}`;
         const res = await fetch(url);
         if (!res.ok) {
           if (res.status === 429) {
@@ -105,7 +111,7 @@ function PlaneTrackerz() {
     };
 
     fetchAircraft();
-    const interval = setInterval(fetchAircraft, 5000); // Fetch every 5 seconds
+    const interval = setInterval(fetchAircraft, FETCH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [currentSearchLat, currentSearchLon, passedAircraft]);
 

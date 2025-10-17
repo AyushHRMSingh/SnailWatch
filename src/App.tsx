@@ -5,6 +5,11 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useColors } from './context/ColorContext';
 
+// ===== CONFIGURABLE TIMERS =====
+const FETCH_INTERVAL_MS = 2500;  // How often to fetch aircraft data (milliseconds)
+const REFRESH_INTERVAL = 10;     // Check for new aircraft every N fetches (10 = every 25 seconds)
+// ===============================
+
 // --- Data Interfaces ---
 interface Aircraft {
   hex: string;
@@ -83,7 +88,6 @@ function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousLocation = useRef<{ lat: number; lon: number } | null>(null);
   const previousRadius = useRef<string | null>(null);
-  const REFRESH_INTERVAL = 10; // Check for new planes every 10 seconds
   const fetchCounter = useRef(0); // Counter to track fetch cycles
 
   const resetMapView = () => {
@@ -534,9 +538,9 @@ function App() {
       return;
     }
     
-    console.log('Starting fetchData and interval (fetching every 2.5 seconds)');
+    console.log(`Starting fetchData and interval (fetching every ${FETCH_INTERVAL_MS}ms)`);
     fetchData();
-    const interval = setInterval(fetchData, 2500); // Fetch every 2.5 seconds
+    const interval = setInterval(fetchData, FETCH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [userLocation, radius, dataSource]);
 
