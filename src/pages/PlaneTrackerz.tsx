@@ -322,7 +322,7 @@ function PlaneTrackerz() {
     });
   }, [trackedAircraft, selectedAircraft, currentColors]);
 
-  // Update plane marker position
+  // Update plane marker position and route
   useEffect(() => {
     if (!trackingPlaneMarker.current || !selectedAircraft || !trackingMap.current) return;
 
@@ -333,22 +333,57 @@ function PlaneTrackerz() {
       trackingPlaneMarker.current.setRotation(heading);
     }
 
-    const routeSource = trackingMap.current.getSource('route');
-    if (routeSource && trackedAircraft?.Origin && trackedAircraft?.Destination) {
-      (routeSource as maplibregl.GeoJSONSource).setData({
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: [
-            [trackedAircraft.Origin.lon!, trackedAircraft.Origin.lat!],
-            [selectedAircraft.lon, selectedAircraft.lat],
-            [trackedAircraft.Destination.lon!, trackedAircraft.Destination.lat!]
-          ]
-        },
-        properties: {}
-      });
+    // Update or create route
+    if (trackedAircraft?.Origin?.lon && trackedAircraft?.Origin?.lat && 
+        trackedAircraft?.Destination?.lon && trackedAircraft?.Destination?.lat) {
+      
+      const routeSource = trackingMap.current.getSource('route');
+      if (routeSource) {
+        // Update existing route
+        (routeSource as maplibregl.GeoJSONSource).setData({
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [trackedAircraft.Origin.lon, trackedAircraft.Origin.lat],
+              [selectedAircraft.lon, selectedAircraft.lat],
+              [trackedAircraft.Destination.lon, trackedAircraft.Destination.lat]
+            ]
+          },
+          properties: {}
+        });
+      } else {
+        // Create route if it doesn't exist yet
+        trackingMap.current.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'LineString',
+              coordinates: [
+                [trackedAircraft.Origin.lon, trackedAircraft.Origin.lat],
+                [selectedAircraft.lon, selectedAircraft.lat],
+                [trackedAircraft.Destination.lon, trackedAircraft.Destination.lat]
+              ]
+            },
+            properties: {}
+          }
+        });
+
+        trackingMap.current.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          paint: {
+            'line-color': currentColors.primary,
+            'line-width': 3,
+            'line-opacity': 0.6,
+            'line-dasharray': [2, 2]
+          }
+        });
+      }
     }
-  }, [selectedAircraft, trackedAircraft]);
+  }, [selectedAircraft, trackedAircraft, currentColors]);
 
   if (!passedAircraft) {
     return (
