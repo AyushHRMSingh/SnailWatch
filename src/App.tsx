@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
-import { FileText, Plane, Factory, Users, Radio, Settings, X, Navigation, Mountain, Gauge, ExternalLink, Volume2, VolumeX } from 'lucide-react';
+import { FileText, Plane, Factory, Users, Radio, Settings, X, Navigation, Mountain, Gauge, ExternalLink, Volume2, VolumeX, RotateCcw } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -73,7 +73,7 @@ interface AircraftDetail {
   };
   Airline?: {
     name: string;
-    iata: string;
+    iata: string; 
     country: string;
   };
 }
@@ -113,6 +113,25 @@ function App() {
   const previousRadius = useRef<string | null>(null);
   const REFRESH_INTERVAL = 10; // Increased to avoid rate limiting
 
+  const resetMapView = () => {
+    if (!map.current || !userLocation) return;
+    
+    // Calculate bounds based on scanner range
+    const radiusInMeters = parseFloat(radius) * 1852; // Convert NM to meters
+    const latDelta = (radiusInMeters / 111320);
+    const lonDelta = (radiusInMeters / (111320 * Math.cos(userLocation.lat * Math.PI / 180)));
+    
+    const bounds: [[number, number], [number, number]] = [
+      [userLocation.lon - lonDelta, userLocation.lat - latDelta],
+      [userLocation.lon + lonDelta, userLocation.lat + latDelta]
+    ];
+    
+    map.current.fitBounds(bounds, {
+      padding: 0,
+      duration: 1000
+    });
+  };
+
   const fetchAircraftDetails = async (hex: string, callsign?: string, altitude?: number | 'ground', mach?: number, groundSpeed?: number, aircraftData?: Aircraft) => {
     // Convert Mach to km/h (Mach 1 ≈ 1234.8 km/h at sea level), or use ground speed (knots to km/h)
     let speedKmh: number | undefined;
@@ -127,9 +146,9 @@ function App() {
       const defaultDetails: AircraftDetail = {
         ICAO: hex,
         Registration: aircraftData.r || hex,
-        Manufacturer: 'Loading...',
+        Manufacturer: 'Not found',
         Type: aircraftData.desc || aircraftData.t || 'Unknown',
-        RegisteredOwners: 'Loading...',
+        RegisteredOwners: 'Not found',
         Callsign: callsign,
         Altitude: altitude,
         Speed: speedKmh,
@@ -535,12 +554,12 @@ function App() {
 
     // Recreate map if it doesn't exist OR if location/radius changed
     if (!map.current || locationChanged || radiusChanged) {
-      // Remove old map if it exists
+      // Remove old markers and map if they exist
+      if (planeMarker.current) {
+        planeMarker.current.remove();
+        planeMarker.current = null;
+      }
       if (map.current) {
-        if (planeMarker.current) {
-          planeMarker.current.remove();
-          planeMarker.current = null;
-        }
         map.current.remove();
         map.current = null;
       }
@@ -663,10 +682,17 @@ function App() {
     } else if (map.current) {
       // Map exists, update or create the plane marker
       if (planeMarker.current) {
-        // Update existing marker position
+        // Update existing marker position and rotation
         planeMarker.current.setLngLat([selectedAircraft.lon, selectedAircraft.lat]);
+        
+        // Update rotation if heading changed
+        const heading = selectedAircraft.track ?? selectedAircraft.calc_track ?? selectedAircraft.dir;
+        if (heading !== undefined) {
+          const el = planeMarker.current.getElement();
+          el.style.transform = `rotate(${heading}deg)`;
+        }
       } else {
-        // Create new marker if it doesn't exist
+        // Create new marker only if it doesn't exist
         const el = document.createElement('div');
         el.className = 'plane-marker';
         el.innerHTML = '✈️';
@@ -683,6 +709,14 @@ function App() {
           .addTo(map.current);
       }
     }
+    
+    // Cleanup function to remove marker when component unmounts or aircraft changes
+    return () => {
+      if (planeMarker.current && !selectedAircraftDetail) {
+        planeMarker.current.remove();
+        planeMarker.current = null;
+      }
+    };
   }, [selectedAircraftDetail, aircraft, userLocation, radius]);
 
   return (
@@ -802,6 +836,10 @@ function App() {
                   localStorage.setItem('radius', radius);
                   localStorage.setItem('useCustomLocation', useCustomLocation.toString());
                   
+                  // Clear the aircraft card when changing location
+                  setSelectedAircraftDetail(null);
+                  previousAircraft.current.clear();
+                  
                   if (useCustomLocation && customLat && customLon) {
                     // Use custom location
                     const lat = parseFloat(customLat);
@@ -854,20 +892,33 @@ function App() {
         )}
       </header>
 
-      {selectedAircraftDetail && (
-        <div className="details-card details-card-enter">
-          <div className="card-content-wrapper">
-            <div className="card-info">
-          {selectedAircraftDetail.error ? (
-            <div className="detail-item detail-item-1">
-              <p>Aircraft <strong><TypewriterText text={selectedAircraftDetail.Registration} speed={40} /></strong> <TypewriterText text={selectedAircraftDetail.error} speed={30} /></p>
+      {/* Always show the card */}
+      <div className="details-card details-card-enter">
+        <div className="card-content-wrapper">
+          <div className="card-info">
+        {!selectedAircraftDetail ? (
+          <>
+            <div className="card-header card-header-enter">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Radio size={32} color="#00ff00" strokeWidth={2.5} style={{ filter: 'drop-shadow(0 0 8px rgba(0, 255, 0, 0.6))' }} />
+                <h2><TypewriterText text="SCANNING..." speed={80} /></h2>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.3rem', fontSize: '0.85rem', opacity: 0.7 }}>
+                <div>⏱ {countdown}s</div>
+                <div>Tracking: {aircraft.length}</div>
+              </div>
             </div>
-          ) : (
-            <>
-              <div className="card-header card-header-enter">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Plane size={32} color="#00ff00" strokeWidth={2.5} style={{ filter: 'drop-shadow(0 0 8px rgba(0, 255, 0, 0.6))' }} />
-                  <h2><TypewriterText text="AIRCRAFT IDENTIFIED" speed={80} /></h2>
+          </>
+        ) : selectedAircraftDetail.error ? (
+          <div className="detail-item detail-item-1">
+            <p>Aircraft <strong><TypewriterText text={selectedAircraftDetail.Registration} speed={40} /></strong> <TypewriterText text={selectedAircraftDetail.error} speed={30} /></p>
+          </div>
+        ) : (
+          <>
+            <div className="card-header card-header-enter">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Plane size={32} color="#00ff00" strokeWidth={2.5} style={{ filter: 'drop-shadow(0 0 8px rgba(0, 255, 0, 0.6))' }} />
+                <h2><TypewriterText text="AIRCRAFT IDENTIFIED" speed={80} /></h2>
                   <a 
                     href={`https://www.flightradar24.com/${selectedAircraftDetail.Registration.toLowerCase().replace(/[^a-z0-9]/g, '')}`}
                     target="_blank"
@@ -886,7 +937,22 @@ function App() {
               {selectedAircraftDetail.Origin && selectedAircraftDetail.Destination && (
                 <div className="detail-item detail-item-1">
                   <Navigation size={24} color="#00ff00" strokeWidth={2} />
-                  <p><strong>Route:</strong> <TypewriterText text={`${selectedAircraftDetail.Origin.iata_code} → ${selectedAircraftDetail.Destination.iata_code}`} speed={60} /></p>
+                  <p>
+                    <strong>Route:</strong>{' '}
+                    <span 
+                      className="airport-code"
+                      data-tooltip={`${selectedAircraftDetail.Origin.name}, ${selectedAircraftDetail.Origin.municipality}, ${selectedAircraftDetail.Origin.country_name}`}
+                    >
+                      {selectedAircraftDetail.Origin.iata_code}
+                    </span>
+                    {' → '}
+                    <span 
+                      className="airport-code"
+                      data-tooltip={`${selectedAircraftDetail.Destination.name}, ${selectedAircraftDetail.Destination.municipality}, ${selectedAircraftDetail.Destination.country_name}`}
+                    >
+                      {selectedAircraftDetail.Destination.iata_code}
+                    </span>
+                  </p>
                 </div>
               )}
               {selectedAircraftDetail.Airline && (
@@ -935,13 +1001,21 @@ function App() {
               </div>
             </>
             )}
-            </div>
-            <div className="card-map">
-              <div ref={mapContainer} className="map-container" id="mapa" />
-            </div>
+          </div>
+          <div className="card-map">
+            <div ref={mapContainer} className="map-container" id="mapa" />
           </div>
         </div>
-      )}
+        {selectedAircraftDetail && (
+          <button 
+            className="reset-map-button"
+            onClick={resetMapView}
+            title="Reset map view"
+          >
+            <RotateCcw size={20} color="#00ff00" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

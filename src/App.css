@@ -263,10 +263,9 @@
     inset 0 0 30px rgba(0,255,0,0.15),
     inset 0 0 1px 2px rgba(0,255,0,0.3);
   padding: 2.5rem;
-  transition: all 0.4s ease;
   animation: card-pulse 3s ease-in-out infinite;
   backdrop-filter: blur(10px);
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
 }
 
@@ -287,6 +286,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .card-map .map-container {
@@ -298,6 +298,30 @@
   box-shadow: 
     0 0 30px rgba(0,255,0,0.5),
     inset 0 0 20px rgba(0,255,0,0.2);
+}
+
+.reset-map-button {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  background: rgba(0,32,0,0.95);
+  border: 2px solid #00ff00;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(0,255,0,0.5);
+  z-index: 100;
+}
+
+.reset-map-button:hover {
+  background: rgba(0,64,0,0.98);
+  box-shadow: 0 0 30px rgba(0,255,0,0.8);
+  transform: rotate(-180deg) scale(1.15);
 }
 
 .details-card-enter {
@@ -321,31 +345,6 @@
 @keyframes border-glow {
   0%, 100% { opacity: 0.3; }
   50% { opacity: 0.6; }
-}
-
-.details-card:hover {
-  transform: scale(1.08) translateY(-8px);
-  box-shadow: 
-    0 0 60px #00ff44ee,
-    0 0 120px rgba(0,255,0,0.5),
-    inset 0 0 40px rgba(0,255,0,0.25),
-    inset 0 0 1px 3px rgba(0,255,0,0.5);
-  border-color: #00ff88;
-}
-
-@keyframes card-pulse {
-  0%, 100% {
-    box-shadow: 
-      0 0 40px #00ff44aa,
-      0 0 80px rgba(0,255,0,0.3),
-      inset 0 0 30px rgba(0,255,0,0.15);
-  }
-  50% {
-    box-shadow: 
-      0 0 50px #00ff44cc,
-      0 0 100px rgba(0,255,0,0.4),
-      inset 0 0 35px rgba(0,255,0,0.2);
-  }
 }
 
 .card-header {
@@ -381,14 +380,6 @@
   background: rgba(0,255,0,0.05);
   border-left: 3px solid rgba(0,255,0,0.5);
   border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.detail-item:hover {
-  background: rgba(0,255,0,0.1);
-  border-left-color: #00ff00;
-  transform: translateX(5px);
-  box-shadow: 0 0 15px rgba(0,255,0,0.3);
 }
 
 .detail-item p {
@@ -655,9 +646,6 @@
     margin: 1rem auto;
   }
 
-  .details-card:hover {
-    transform: scale(1.02) translateY(-4px);
-  }
 
   .card-header h2 {
     font-size: 1.3rem;
@@ -881,4 +869,40 @@
   50% {
     filter: brightness(1.5);
   }
+}
+
+/* Airport code tooltip */
+.airport-code {
+  position: relative;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: rgba(0, 255, 0, 0.5);
+}
+
+.airport-code::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: rgba(0, 32, 0, 0.98);
+  color: #00ff00;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 2px solid #00ff00;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+}
+
+.airport-code:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-4px);
 }
