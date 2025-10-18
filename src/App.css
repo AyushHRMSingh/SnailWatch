@@ -2,9 +2,9 @@
   --color-primary: #00ff00;
   --color-secondary: #00ff88;
   --color-accent: #00ff44;
-  --color-background: rgba(0,40,0,0.98);
+  --color-background: rgba(0,40,0,0.95);
   --color-bg-dark: #000800;
-  --color-shadow: rgba(0,255,0,0.9);
+  --color-shadow: rgba(0,255,0,0.15);
 }
 
 .App {
@@ -71,7 +71,7 @@
   right: 1.5rem;
   z-index: 100;
   background: var(--color-background);
-  border: 2px solid var(--color-primary);
+  border: 1.5px solid var(--color-primary);
   border-radius: 50%;
   width: 50px;
   height: 50px;
@@ -79,14 +79,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 20px var(--color-shadow);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
 }
 
 .settings-button:hover {
-  background: var(--color-background);
-  box-shadow: 0 0 30px var(--color-shadow);
-  transform: rotate(90deg) scale(1.1);
+  background: rgba(0, 255, 0, 0.1);
+  transform: scale(1.05);
 }
 
 .sound-toggle-button {
@@ -94,22 +93,21 @@
   bottom: 1.5rem;
   right: 1.5rem;
   background: var(--color-background);
-  border: 2px solid var(--color-primary);
+  border: 1.5px solid var(--color-primary);
   border-radius: 50%;
   padding: 0.75rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 20px var(--color-shadow);
+  backdrop-filter: blur(10px);
 }
 
 .sound-toggle-button:hover {
-  background: var(--color-background);
-  box-shadow: 0 0 30px var(--color-shadow);
-  transform: scale(1.1);
+  background: rgba(0, 255, 0, 0.1);
+  transform: scale(1.05);
 }
 
 .settings-overlay {
@@ -126,16 +124,14 @@
 
 .settings-popup {
   background: var(--color-background);
-  border: 3px solid var(--color-primary);
-  border-radius: 20px;
-  box-shadow: 
-    0 0 40px var(--color-shadow),
-    0 0 80px var(--color-shadow),
-    inset 0 0 30px var(--color-shadow);
+  border: 1.5px solid rgba(0, 255, 0, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   padding: 2rem;
   max-width: 500px;
   width: 90%;
-  animation: card-slide-in 0.4s ease-out;
+  animation: card-slide-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(20px);
 }
 
 .settings-header {
@@ -144,18 +140,15 @@
   align-items: center;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid var(--color-shadow);
+  border-bottom: 1px solid rgba(0, 255, 0, 0.2);
 }
 
 .settings-header h2 {
   margin: 0;
-  font-size: 1.8rem;
-  font-weight: 900;
-  letter-spacing: 0.2em;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   color: var(--color-primary);
-  text-shadow: 
-    0 0 10px var(--color-shadow),
-    0 0 20px var(--color-shadow);
 }
 
 .close-button {
@@ -163,13 +156,13 @@
   border: none;
   cursor: pointer;
   padding: 0.5rem;
-  transition: all 0.3s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 50%;
 }
 
 .close-button:hover {
-  background: var(--color-shadow);
-  transform: rotate(90deg);
+  background: rgba(0, 255, 0, 0.1);
+  transform: scale(1.1);
 }
 
 .settings-content {
@@ -186,11 +179,9 @@
 
 .settings-section label {
   color: var(--color-secondary);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.9rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-shadow: 0 0 5px var(--color-shadow);
+  letter-spacing: 0.02em;
 }
 
 .checkbox-label {

@@ -5,7 +5,12 @@
       "models": [
         {
           "plane_name": "Boeing 737",
-          "regex": ["B737", "737", "B73.*"],
+          "regex": ["B737", "737", "B73[^M].*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Boeing_737-8_%28Southwest_Airlines%29.jpg/320px-Boeing_737-8_%28Southwest_Airlines%29.jpg"
+        },
+        {
+          "plane_name": "Boeing 737 MAX 8",
+          "regex": ["B37M", "73M", "737MAX", "737-MAX", "B738MAX"],
           "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Boeing_737-8_%28Southwest_Airlines%29.jpg/320px-Boeing_737-8_%28Southwest_Airlines%29.jpg"
         },
         {
@@ -40,8 +45,13 @@
       "models": [
         {
           "plane_name": "Airbus A320",
-          "regex": ["A320", "A32.*"],
+          "regex": ["A320", "A32[^1N].*"],
           "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Airbus_A320-214%2C_EasyJet_JP7667354.jpg/320px-Airbus_A320-214%2C_EasyJet_JP7667354.jpg"
+        },
+        {
+          "plane_name": "Airbus A321neo",
+          "regex": ["A321N", "321N", "A21N"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/JetBlue_Airways_Airbus_A321-271NX_N2002J.jpg/320px-JetBlue_Airways_Airbus_A321-271NX_N2002J.jpg"
         },
         {
           "plane_name": "Airbus A330",
@@ -87,6 +97,11 @@
           "plane_name": "Bombardier CRJ",
           "regex": ["CRJ", "CL60.*"],
           "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Air_Canada_Express_Bombardier_CRJ-200ER_C-FEJA.jpg/320px-Air_Canada_Express_Bombardier_CRJ-200ER_C-FEJA.jpg"
+        },
+        {
+          "plane_name": "Bombardier Challenger 605",
+          "regex": ["CL60", "CL-60", "CL600", "CL-600", "CHALLENGER", "CH60"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Bombardier_Challenger_605_%28CL-600-2B16%29_AN1988499.jpg/320px-Bombardier_Challenger_605_%28CL-600-2B16%29_AN1988499.jpg"
         },
         {
           "plane_name": "Bombardier Dash 8",

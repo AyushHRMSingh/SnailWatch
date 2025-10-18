@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Settings, X, Volume2, VolumeX, Filter } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -46,7 +46,8 @@ interface PlanesDatabase {
 function PlaneWatcherz() {
   const { currentColors } = useColors();
   const navigate = useNavigate();
-  const [aircraft, setAircraft] = useState<Aircraft[]>([]);
+  const [allAircraft, setAllAircraft] = useState<Aircraft[]>([]); // Store ALL aircraft from API
+  const [aircraft, setAircraft] = useState<Aircraft[]>([]); // Filtered aircraft for display
   const [selectedAircraft, setSelectedAircraft] = useState<Aircraft | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -61,7 +62,11 @@ function PlaneWatcherz() {
   const [isSearching, setIsSearching] = useState(false);
   const [planesDatabase, setPlanesDatabase] = useState<PlanesDatabase | null>(null);
   const [showFilter, setShowFilter] = useState(false);
-  const [selectedPlaneFilter, setSelectedPlaneFilter] = useState<string | null>(() => localStorage.getItem('selectedPlaneFilter') || null);
+  const [selectedPlaneFilters, setSelectedPlaneFilters] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('selectedPlaneFilters');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+  const OTHERS_FILTER = '__OTHERS__';
 
   const previousAircraft = useRef(new Set<string>());
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -73,28 +78,37 @@ function PlaneWatcherz() {
   const previousRadius = useRef<string | null>(null);
   const fetchCounter = useRef(0);
 
-  // Function to check if aircraft matches the selected filter
+  // Function to check if aircraft matches ANY of the selected filters
   const matchesFilter = (aircraft: Aircraft): boolean => {
-    if (!selectedPlaneFilter || !planesDatabase) return true;
+    if (selectedPlaneFilters.size === 0 || !planesDatabase) return true;
     
     const aircraftType = aircraft.t || aircraft.desc || '';
+    let matchedAnyKnownPlane = false;
     
-    // Find the selected plane model
+    // Check if aircraft matches ANY of the selected plane models
     for (const manufacturer of planesDatabase.planes) {
       for (const model of manufacturer.models) {
-        if (model.plane_name === selectedPlaneFilter) {
-          // Check if aircraft type matches any of the regex patterns
-          return model.regex.some(pattern => {
-            try {
-              const regex = new RegExp(pattern, 'i');
-              return regex.test(aircraftType);
-            } catch (e) {
-              console.error('Invalid regex pattern:', pattern);
-              return false;
-            }
-          });
+        const matches = model.regex.some(pattern => {
+          try {
+            const regex = new RegExp(pattern, 'i');
+            return regex.test(aircraftType);
+          } catch (e) {
+            console.error('Invalid regex pattern:', pattern);
+            return false;
+          }
+        });
+        
+        if (matches) {
+          matchedAnyKnownPlane = true;
+          if (selectedPlaneFilters.has(model.plane_name)) {
+            return true;
+          }
         }
       }
+    }
+    
+    if (!matchedAnyKnownPlane && selectedPlaneFilters.has(OTHERS_FILTER)) {
+      return true;
     }
     
     return false;
@@ -140,7 +154,7 @@ function PlaneWatcherz() {
     }
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!userLocation) return;
     
     fetchCounter.current += 1;
@@ -178,30 +192,26 @@ function PlaneWatcherz() {
         }));
       }
 
-      // Filter aircraft based on selected filter
-      const filteredAircraft = selectedPlaneFilter 
-        ? currentAircraft.filter(matchesFilter)
-        : currentAircraft;
-      
-      setAircraft(filteredAircraft);
+      // Store ALL aircraft from API
+      setAllAircraft(currentAircraft);
 
       if (shouldCheckNewPlanes) {
         setCountdown(REFRESH_INTERVAL);
-        const newEntries = filteredAircraft.filter(ac => !previousAircraft.current.has(ac.hex) && ac.r);
+        const newEntries = currentAircraft.filter(ac => !previousAircraft.current.has(ac.hex) && ac.r);
         
         if (newEntries.length > 0 && audioRef.current && soundEnabled) {
           audioRef.current.currentTime = 0;
           audioRef.current.play().catch(err => console.log('Audio play failed:', err));
         }
         
-        // Update with filtered aircraft hex codes
-        const filteredHexCodes = new Set(filteredAircraft.map(ac => ac.hex));
-        previousAircraft.current = filteredHexCodes;
+        // Update with all aircraft hex codes
+        const currentHexCodes = new Set(currentAircraft.map(ac => ac.hex));
+        previousAircraft.current = currentHexCodes;
       }
     } catch (err) {
       console.error('Error fetching aircraft:', err);
     }
-  };
+  }, [userLocation, radius, dataSource, soundEnabled]);
 
 
   // Load planes database
@@ -216,6 +226,18 @@ function PlaneWatcherz() {
         console.error('Failed to load planes database:', err);
       });
   }, []);
+
+  // Filter aircraft whenever allAircraft or selectedPlaneFilters changes
+  useEffect(() => {
+    if (selectedPlaneFilters.size > 0 && planesDatabase) {
+      const filtered = allAircraft.filter(matchesFilter);
+      setAircraft(filtered);
+      console.log(`Filtered ${filtered.length} aircraft out of ${allAircraft.length} (filters: ${Array.from(selectedPlaneFilters).join(', ')})`);
+    } else {
+      setAircraft(allAircraft);
+      console.log(`Showing all ${allAircraft.length} aircraft (no filter)`);
+    }
+  }, [allAircraft, selectedPlaneFilters, planesDatabase]);
 
   // Get user location
   useEffect(() => {
@@ -252,7 +274,7 @@ function PlaneWatcherz() {
     fetchData();
     const interval = setInterval(fetchData, FETCH_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [userLocation, radius, dataSource]);
+  }, [userLocation, radius, dataSource, fetchData]);
 
   // Countdown timer
   useEffect(() => {
@@ -562,21 +584,40 @@ function PlaneWatcherz() {
 
       {/* Filter Button */}
       <button
-        onClick={() => setShowFilter(true)}
+        onClick={() => setShowFilter(!showFilter)}
         style={{
           position: 'fixed',
           top: '140px',
           right: '20px',
           zIndex: 10001,
-          background: selectedPlaneFilter ? currentColors.primary : currentColors.background,
+          background: selectedPlaneFilters.size > 0 ? currentColors.primary : currentColors.background,
           border: `2px solid ${currentColors.primary}`,
-          color: selectedPlaneFilter ? currentColors.bgDark : currentColors.primary,
+          color: selectedPlaneFilters.size > 0 ? currentColors.bgDark : currentColors.primary,
           padding: '10px',
           borderRadius: '8px',
           cursor: 'pointer'
         }}
       >
         <Filter size={24} />
+        {selectedPlaneFilters.size > 0 && (
+          <span style={{
+            position: 'absolute',
+            top: '-5px',
+            right: '-5px',
+            background: '#ff0000',
+            color: '#fff',
+            borderRadius: '50%',
+            width: '20px',
+            height: '20px',
+            fontSize: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 'bold'
+          }}>
+            {selectedPlaneFilters.size}
+          </span>
+        )}
       </button>
 
       {/* Filter Modal */}
@@ -584,79 +625,226 @@ function PlaneWatcherz() {
         <div className="settings-overlay" onClick={() => setShowFilter(false)}>
           <div className="settings-popup" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '80vh', overflowY: 'auto' }}>
             <div className="settings-header">
-              <h2>FILTER PLANES</h2>
+              <h2>FILTER PLANES ({selectedPlaneFilters.size} selected)</h2>
               <button className="close-button" onClick={() => setShowFilter(false)}>
                 <X size={24} color={currentColors.primary} />
               </button>
             </div>
             
             <div className="settings-content">
-              <div className="settings-section">
+              <div className="settings-section" style={{ display: 'flex', gap: '0.5rem' }}>
                 <button 
-                  className={`apply-button ${!selectedPlaneFilter ? 'active' : ''}`}
-                  style={{ marginBottom: '1rem', background: !selectedPlaneFilter ? currentColors.primary : 'rgba(0, 255, 0, 0.1)' }}
+                  className="apply-button"
+                  style={{ flex: 1, background: 'rgba(0, 255, 0, 0.1)', border: 'none', transition: 'all 0.2s ease' }}
                   onClick={() => {
-                    setSelectedPlaneFilter(null);
-                    localStorage.removeItem('selectedPlaneFilter');
-                    setShowFilter(false);
+                    setSelectedPlaneFilters(new Set());
+                    localStorage.removeItem('selectedPlaneFilters');
                   }}
                 >
-                  Show All Planes
+                  Clear All
+                </button>
+                <button 
+                  className="apply-button"
+                  style={{ flex: 1, background: currentColors.primary, color: '#000', border: 'none', transition: 'all 0.2s ease' }}
+                  onClick={() => {
+                    if (planesDatabase) {
+                      const allPlanes = new Set<string>();
+                      planesDatabase.planes.forEach(m => m.models.forEach(p => allPlanes.add(p.plane_name)));
+                      allPlanes.add(OTHERS_FILTER);
+                      setSelectedPlaneFilters(allPlanes);
+                      localStorage.setItem('selectedPlaneFilters', JSON.stringify(Array.from(allPlanes)));
+                    }
+                  }}
+                >
+                  Select All
                 </button>
               </div>
 
-              {planesDatabase && planesDatabase.planes.map((manufacturer) => (
-                <div key={manufacturer.manufacturer_name} className="settings-section">
+              {/* Others Category */}
+              <div className="settings-section">
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  marginBottom: '0.5rem',
+                  borderBottom: `1px solid rgba(0, 255, 0, 0.2)`,
+                  paddingBottom: '0.3rem'
+                }}>
                   <h3 style={{ 
                     color: currentColors.primary, 
                     fontSize: '1.1rem', 
-                    marginBottom: '0.5rem',
-                    borderBottom: `1px solid ${currentColors.primary}`,
-                    paddingBottom: '0.3rem'
+                    margin: 0
                   }}>
-                    {manufacturer.manufacturer_name}
+                    Others
                   </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
-                    {manufacturer.models.map((model) => (
+                </div>
+                <button
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '0.8rem',
+                    background: selectedPlaneFilters.has(OTHERS_FILTER) ? currentColors.primary : 'rgba(0, 255, 0, 0.05)',
+                    border: `1px solid ${selectedPlaneFilters.has(OTHERS_FILTER) ? currentColors.primary : 'rgba(0, 255, 0, 0.2)'}`,
+                    color: selectedPlaneFilters.has(OTHERS_FILTER) ? '#000' : currentColors.primary,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    width: '100%',
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s ease',
+                    position: 'relative'
+                  }}
+                  onClick={() => {
+                    const newFilters = new Set(selectedPlaneFilters);
+                    if (selectedPlaneFilters.has(OTHERS_FILTER)) {
+                      newFilters.delete(OTHERS_FILTER);
+                    } else {
+                      newFilters.add(OTHERS_FILTER);
+                    }
+                    setSelectedPlaneFilters(newFilters);
+                    localStorage.setItem('selectedPlaneFilters', JSON.stringify(Array.from(newFilters)));
+                  }}
+                >
+                  {selectedPlaneFilters.has(OTHERS_FILTER) && (
+                    <div style={{
+                      position: 'absolute',
+                      right: '10px',
+                      background: '#00ff00',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 'bold',
+                      fontSize: '14px',
+                      color: '#000'
+                    }}>
+                      ✓
+                    </div>
+                  )}
+                  All unrecognized aircraft types
+                </button>
+              </div>
+
+              {planesDatabase && planesDatabase.planes.map((manufacturer) => {
+                const manufacturerPlanes = manufacturer.models.map(m => m.plane_name);
+                const allSelected = manufacturerPlanes.every(p => selectedPlaneFilters.has(p));
+                const someSelected = manufacturerPlanes.some(p => selectedPlaneFilters.has(p));
+                
+                return (
+                  <div key={manufacturer.manufacturer_name} className="settings-section">
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      marginBottom: '0.5rem',
+                      borderBottom: `1px solid ${currentColors.primary}`,
+                      paddingBottom: '0.3rem'
+                    }}>
+                      <h3 style={{ 
+                        color: currentColors.primary, 
+                        fontSize: '1.1rem', 
+                        margin: 0
+                      }}>
+                        {manufacturer.manufacturer_name}
+                      </h3>
                       <button
-                        key={model.plane_name}
-                        className={`color-mode-button ${selectedPlaneFilter === model.plane_name ? 'active' : ''}`}
                         style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          padding: '0.5rem',
-                          background: selectedPlaneFilter === model.plane_name ? currentColors.primary : 'rgba(0, 255, 0, 0.05)',
+                          background: allSelected ? currentColors.primary : someSelected ? 'rgba(0, 255, 0, 0.3)' : 'rgba(0, 255, 0, 0.1)',
                           border: `1px solid ${currentColors.primary}`,
-                          color: selectedPlaneFilter === model.plane_name ? '#000' : currentColors.primary,
-                          minHeight: '80px'
+                          color: allSelected ? '#000' : currentColors.primary,
+                          padding: '0.3rem 0.8rem',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                          fontWeight: 'bold'
                         }}
                         onClick={() => {
-                          setSelectedPlaneFilter(model.plane_name);
-                          localStorage.setItem('selectedPlaneFilter', model.plane_name);
-                          setShowFilter(false);
+                          const newFilters = new Set(selectedPlaneFilters);
+                          if (allSelected) {
+                            manufacturerPlanes.forEach(p => newFilters.delete(p));
+                          } else {
+                            manufacturerPlanes.forEach(p => newFilters.add(p));
+                          }
+                          setSelectedPlaneFilters(newFilters);
+                          localStorage.setItem('selectedPlaneFilters', JSON.stringify(Array.from(newFilters)));
                         }}
                       >
-                        <img 
-                          src={model.photo_url} 
-                          alt={model.plane_name}
-                          style={{ 
-                            width: '100%', 
-                            height: '60px', 
-                            objectFit: 'cover', 
-                            marginBottom: '0.3rem',
-                            borderRadius: '4px'
-                          }}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                        <span style={{ fontSize: '0.8rem', textAlign: 'center' }}>{model.plane_name}</span>
+                        {allSelected ? 'Deselect All' : 'Select All'}
                       </button>
-                    ))}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                      {manufacturer.models.map((model) => {
+                        const isSelected = selectedPlaneFilters.has(model.plane_name);
+                        return (
+                          <button
+                            key={model.plane_name}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              padding: '0.5rem',
+                              background: isSelected ? currentColors.primary : 'rgba(0, 255, 0, 0.05)',
+                              border: `2px solid ${isSelected ? currentColors.primary : 'rgba(0, 255, 0, 0.2)'}`,
+                              color: isSelected ? '#000' : currentColors.primary,
+                              minHeight: '80px',
+                              position: 'relative',
+                              cursor: 'pointer',
+                              borderRadius: '4px'
+                            }}
+                            onClick={() => {
+                              const newFilters = new Set(selectedPlaneFilters);
+                              if (isSelected) {
+                                newFilters.delete(model.plane_name);
+                              } else {
+                                newFilters.add(model.plane_name);
+                              }
+                              setSelectedPlaneFilters(newFilters);
+                              localStorage.setItem('selectedPlaneFilters', JSON.stringify(Array.from(newFilters)));
+                            }}
+                          >
+                            {isSelected && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '5px',
+                                right: '5px',
+                                background: '#00ff00',
+                                borderRadius: '50%',
+                                width: '20px',
+                                height: '20px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 'bold',
+                                fontSize: '14px',
+                                color: '#000'
+                              }}>
+                                ✓
+                              </div>
+                            )}
+                            <img 
+                              src={model.photo_url} 
+                              alt={model.plane_name}
+                              style={{ 
+                                width: '100%', 
+                                height: '60px', 
+                                objectFit: 'cover', 
+                                marginBottom: '0.3rem',
+                                borderRadius: '4px',
+                                opacity: isSelected ? 1 : 0.6
+                              }}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                            <span style={{ fontSize: '0.8rem', textAlign: 'center' }}>{model.plane_name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -763,19 +951,23 @@ function PlaneWatcherz() {
         borderRadius: '8px',
         padding: '10px 20px',
         color: currentColors.primary,
-        zIndex: 10000
+        zIndex: 10000,
+        maxWidth: '300px'
       }}>
         <div>⏱ {countdown}s | Tracking: {aircraft.length}</div>
-        {selectedPlaneFilter && (
+        {selectedPlaneFilters.size > 0 && (
           <div style={{ 
-            fontSize: '0.85rem', 
+            fontSize: '0.75rem', 
             marginTop: '5px',
             display: 'flex',
             alignItems: 'center',
             gap: '5px',
-            opacity: 0.8
+            opacity: 0.8,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
           }}>
-            <Filter size={14} /> {selectedPlaneFilter}
+            <Filter size={14} /> {selectedPlaneFilters.size} filter{selectedPlaneFilters.size > 1 ? 's' : ''}
           </div>
         )}
       </div>
