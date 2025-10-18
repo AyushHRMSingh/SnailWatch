@@ -31,7 +31,7 @@ interface AircraftDetail {
   ICAO: string;
   Registration: string;
   Manufacturer: string;
-  Type: string;
+  Model: string;
   RegisteredOwners: string;
   Callsign?: string;
   Altitude?: number | 'ground';
@@ -141,7 +141,7 @@ function PlaneTrackerz() {
         ICAO: hex,
         Registration: passedAircraft.r || 'Unknown',
         Manufacturer: '',
-        Type: passedAircraft.t || 'Unknown',
+        Model: passedAircraft.t && !passedAircraft.t.includes('tisb') && !passedAircraft.t.includes('adsb') && !passedAircraft.t.includes('adsr') ? passedAircraft.t : 'Unknown',
         RegisteredOwners: '',
         Callsign: passedAircraft.flight?.trim(),
         Altitude: passedAircraft.alt_baro,
@@ -155,7 +155,7 @@ function PlaneTrackerz() {
             const hexdbData = await hexdbRes.json();
             if (hexdbData.Registration) aircraftDetail.Registration = hexdbData.Registration;
             if (hexdbData.ICAOTypeCode) aircraftDetail.Manufacturer = hexdbData.ICAOTypeCode;
-            if (hexdbData.Type) aircraftDetail.Type = hexdbData.Type;
+            if (hexdbData.Type) aircraftDetail.Model = hexdbData.Type;
             if (hexdbData.RegisteredOwners) aircraftDetail.RegisteredOwners = hexdbData.RegisteredOwners;
           }
         } catch (e) {
@@ -210,7 +210,7 @@ function PlaneTrackerz() {
             if (adsbData.response && adsbData.response.aircraft) {
               const aircraftInfo = adsbData.response.aircraft;
               if (aircraftInfo.Manufacturer) aircraftDetail.Manufacturer = aircraftInfo.Manufacturer;
-              if (aircraftInfo.Type) aircraftDetail.Type = aircraftInfo.Type;
+              if (aircraftInfo.Type) aircraftDetail.Model = aircraftInfo.Type;
             }
           }
         } catch (e) {
@@ -273,7 +273,7 @@ function PlaneTrackerz() {
       const planeEl = document.createElement('div');
       planeEl.style.width = '48px';
       planeEl.style.height = '48px';
-      planeEl.style.backgroundImage = 'url(/KL.svg)';
+      planeEl.style.backgroundImage = 'url(/blank_plane.png)';
       planeEl.style.backgroundSize = 'contain';
       planeEl.style.backgroundRepeat = 'no-repeat';
       planeEl.style.backgroundPosition = 'center';
@@ -521,9 +521,9 @@ function PlaneTrackerz() {
                 <p><strong>Registration:</strong> {trackedAircraft?.Registration}</p>
               </div>
 
-              {trackedAircraft?.Type && (
+              {trackedAircraft?.Model && (
                 <div style={{ marginBottom: '15px' }}>
-                  <p><strong>Aircraft Type:</strong> {trackedAircraft.Type}</p>
+                  <p><strong>Aircraft Model:</strong> {trackedAircraft.Model}</p>
                 </div>
               )}
 

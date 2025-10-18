@@ -10,7 +10,12 @@
         },
         {
           "plane_name": "Boeing 737 MAX 8",
-          "regex": ["B37M", "73M", "737MAX", "737-MAX", "B738MAX"],
+          "regex": ["B37M", "B38M", "73M", "737MAX", "737-MAX", "B738MAX"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Boeing_737-8_%28Southwest_Airlines%29.jpg/320px-Boeing_737-8_%28Southwest_Airlines%29.jpg"
+        },
+        {
+          "plane_name": "Boeing 737 MAX 9",
+          "regex": ["B39M", "739M", "737MAX9", "737-MAX-9"],
           "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Boeing_737-8_%28Southwest_Airlines%29.jpg/320px-Boeing_737-8_%28Southwest_Airlines%29.jpg"
         },
         {
@@ -44,9 +49,34 @@
       "manufacturer_name": "Airbus",
       "models": [
         {
+          "plane_name": "Airbus A220-100",
+          "regex": ["BCS1", "A221", "CS100"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Air_Baltic_Airbus_A220-300_YL-CSL.jpg/320px-Air_Baltic_Airbus_A220-300_YL-CSL.jpg"
+        },
+        {
+          "plane_name": "Airbus A220-300",
+          "regex": ["BCS3", "A223", "CS300"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Air_Baltic_Airbus_A220-300_YL-CSL.jpg/320px-Air_Baltic_Airbus_A220-300_YL-CSL.jpg"
+        },
+        {
+          "plane_name": "Airbus A319",
+          "regex": ["A319", "319", "A31[^0-9]"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/British_Airways_Airbus_A319-131_G-EUPJ.jpg/320px-British_Airways_Airbus_A319-131_G-EUPJ.jpg"
+        },
+        {
           "plane_name": "Airbus A320",
-          "regex": ["A320", "A32[^1N].*"],
+          "regex": ["A320", "A32[^01N].*"],
           "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Airbus_A320-214%2C_EasyJet_JP7667354.jpg/320px-Airbus_A320-214%2C_EasyJet_JP7667354.jpg"
+        },
+        {
+          "plane_name": "Airbus A320neo",
+          "regex": ["A320N", "A20N", "320N"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Lufthansa_Airbus_A320neo_D-AINC.jpg/320px-Lufthansa_Airbus_A320neo_D-AINC.jpg"
+        },
+        {
+          "plane_name": "Airbus A321",
+          "regex": ["A321[^N]", "321[^N]", "A32[1][^N]"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/American_Airlines_Airbus_A321-231_N162UW.jpg/320px-American_Airlines_Airbus_A321-231_N162UW.jpg"
         },
         {
           "plane_name": "Airbus A321neo",
@@ -80,8 +110,13 @@
       "models": [
         {
           "plane_name": "Embraer E170",
-          "regex": ["E170", "E17.*", "EMB170"],
+          "regex": ["E170", "E17[^5]", "EMB170"],
           "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Embraer_170_LOT.jpg/320px-Embraer_170_LOT.jpg"
+        },
+        {
+          "plane_name": "Embraer E175",
+          "regex": ["E175", "E75L", "EMB175"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/American_Eagle_Embraer_ERJ-175LR_N426YX.jpg/320px-American_Eagle_Embraer_ERJ-175LR_N426YX.jpg"
         },
         {
           "plane_name": "Embraer E190",
@@ -114,9 +149,24 @@
       "manufacturer_name": "Cessna",
       "models": [
         {
+          "plane_name": "Cessna 152",
+          "regex": ["C152", "C-152"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Cessna_152_PR-EJQ_%288476096843%29.jpg/320px-Cessna_152_PR-EJQ_%288476096843%29.jpg"
+        },
+        {
+          "plane_name": "Cessna 170",
+          "regex": ["C170", "C-170"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Cessna_170B_N2431D.jpg/320px-Cessna_170B_N2431D.jpg"
+        },
+        {
           "plane_name": "Cessna 172",
           "regex": ["C172", "C-172"],
           "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Cessna_172S_Skyhawk_SP%2C_Private_JP6817606.jpg/320px-Cessna_172S_Skyhawk_SP%2C_Private_JP6817606.jpg"
+        },
+        {
+          "plane_name": "Cessna Citation CJ3",
+          "regex": ["C25B", "CJ3"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
         },
         {
           "plane_name": "Cessna Citation",
@@ -134,9 +184,124 @@
           "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/American_Airlines_MD-82_N7547A.jpg/320px-American_Airlines_MD-82_N7547A.jpg"
         },
         {
+          "plane_name": "McDonnell Douglas MD-11",
+          "regex": ["MD11", "MD-11"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/FedEx_Express_McDonnell_Douglas_DC-10-30F_N306FE.jpg/320px-FedEx_Express_McDonnell_Douglas_DC-10-30F_N306FE.jpg"
+        },
+        {
+          "plane_name": "McDonnell Douglas DC-9",
+          "regex": ["DC9", "DC-9"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/American_Airlines_MD-82_N7547A.jpg/320px-American_Airlines_MD-82_N7547A.jpg"
+        },
+        {
           "plane_name": "McDonnell Douglas DC-10",
           "regex": ["DC10", "DC-10"],
           "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/FedEx_Express_McDonnell_Douglas_DC-10-30F_N306FE.jpg/320px-FedEx_Express_McDonnell_Douglas_DC-10-30F_N306FE.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "ATR",
+      "models": [
+        {
+          "plane_name": "ATR 42",
+          "regex": ["AT43", "AT44", "AT45", "AT46", "ATR42", "ATR-42"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        },
+        {
+          "plane_name": "ATR 72",
+          "regex": ["AT72", "AT73", "AT75", "AT76", "ATR72", "ATR-72"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "Gulfstream",
+      "models": [
+        {
+          "plane_name": "Gulfstream G280",
+          "regex": ["G280", "GLF2"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        },
+        {
+          "plane_name": "Gulfstream G450",
+          "regex": ["G450", "GLF4"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        },
+        {
+          "plane_name": "Gulfstream G550",
+          "regex": ["G550", "GLF5"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        },
+        {
+          "plane_name": "Gulfstream G650",
+          "regex": ["G650", "GLF6", "GLEX"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "Beechcraft",
+      "models": [
+        {
+          "plane_name": "Beechcraft King Air",
+          "regex": ["BE20", "BE9L", "B350", "KING AIR"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        },
+        {
+          "plane_name": "Beechcraft Baron",
+          "regex": ["BE58", "BARON"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "Piper",
+      "models": [
+        {
+          "plane_name": "Piper Cherokee",
+          "regex": ["PA28", "PA-28", "CHEROKEE"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        },
+        {
+          "plane_name": "Piper Seneca",
+          "regex": ["PA34", "PA-34", "SENECA"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "Dassault",
+      "models": [
+        {
+          "plane_name": "Dassault Falcon 2000",
+          "regex": ["F2TH", "FA20", "FALCON 2000"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        },
+        {
+          "plane_name": "Dassault Falcon 7X",
+          "regex": ["FA7X", "FALCON 7X"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        },
+        {
+          "plane_name": "Dassault Falcon 900",
+          "regex": ["FA50", "FALCON 900"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "De Havilland Canada",
+      "models": [
+        {
+          "plane_name": "DHC-6 Twin Otter",
+          "regex": ["DHC6", "DHC-6", "TWIN OTTER"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        },
+        {
+          "plane_name": "DHC-8 Dash 8",
+          "regex": ["DH8A", "DH8B", "DH8C", "DH8D"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Porter_Airlines_Dash_8_Q400.jpg/320px-Porter_Airlines_Dash_8_Q400.jpg"
         }
       ]
     }

@@ -31,7 +31,7 @@ interface AircraftDetail {
   ICAO: string;
   Registration: string;
   Manufacturer: string;
-  Type: string;
+  Model: string;
   RegisteredOwners: string;
   Callsign?: string;
   Altitude?: number | 'ground';
@@ -95,6 +95,8 @@ function App() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('soundEnabled') !== 'false'); // Default true
   const [dataSource, setDataSource] = useState<'adsb.fi' | 'airplanes.live'>(() => (localStorage.getItem('dataSource') as 'adsb.fi' | 'airplanes.live') || 'adsb.fi');
+  const [showNonStandardADSB, setShowNonStandardADSB] = useState(() => localStorage.getItem('showNonStandardADSB') === 'true'); // Default false
+  const [devMode, setDevMode] = useState(() => localStorage.getItem('devMode') === 'true');
   const [planesDatabase, setPlanesDatabase] = useState<PlanesDatabase | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [selectedPlaneFilters, setSelectedPlaneFilters] = useState<Set<string>>(() => {
@@ -148,7 +150,7 @@ function App() {
         ICAO: hex,
         Registration: aircraftData.r || hex,
         Manufacturer: 'Not found',
-        Type: aircraftData.desc || aircraftData.t || 'Unknown',
+        Model: aircraftData.desc || (aircraftData.t && !aircraftData.t.includes('tisb') && !aircraftData.t.includes('adsb') && !aircraftData.t.includes('adsr') ? aircraftData.t : 'Unknown'),
         RegisteredOwners: 'Not found',
         Callsign: callsign,
         Altitude: altitude,
@@ -183,7 +185,7 @@ function App() {
               ICAO: hex,
               Registration: aircraft.registration || hex,
               Manufacturer: aircraft.manufacturer || 'Unknown',
-              Type: aircraft.type || aircraft.icao_type || 'Unknown',
+              Model: aircraft.type || aircraft.icao_type || 'Unknown',
               RegisteredOwners: aircraft.registered_owner || 'Unknown',
               Callsign: callsign,
               Altitude: altitude,
@@ -258,7 +260,7 @@ function App() {
               ICAO: hex,
               Registration: hexdbData.Registration || hex,
               Manufacturer: hexdbData.Manufacturer || 'Unknown',
-              Type: hexdbData.Type || hexdbData.ICAOTypeCode || 'Unknown',
+              Model: hexdbData.Type || hexdbData.ICAOTypeCode || 'Unknown',
               RegisteredOwners: hexdbData.RegisteredOwners || 'Unknown',
               Callsign: callsign,
               Altitude: altitude,
@@ -297,7 +299,7 @@ function App() {
             ICAO: hex,
             Registration: registration || hex,
             Manufacturer: manufacturer || (model ? model : 'Unknown'),
-            Type: type || 'Unknown',
+            Model: type || 'Unknown',
             RegisteredOwners: owner || 'Unknown',
             Callsign: callsign,
             Altitude: altitude,
@@ -461,17 +463,28 @@ function App() {
       });
   }, []);
 
-  // Filter aircraft whenever allAircraft or selectedPlaneFilters changes
+  // Filter aircraft whenever allAircraft, selectedPlaneFilters, or showNonStandardADSB changes
   useEffect(() => {
-    if (selectedPlaneFilters.size > 0 && planesDatabase) {
-      const filtered = allAircraft.filter(matchesFilter);
-      setAircraft(filtered);
-      console.log(`Filtered ${filtered.length} aircraft out of ${allAircraft.length} (filters: ${Array.from(selectedPlaneFilters).join(', ')})`);
-    } else {
-      setAircraft(allAircraft);
-      console.log(`Showing all ${allAircraft.length} aircraft (no filter)`);
+    let filtered = allAircraft;
+    
+    // First filter by data source type if needed
+    if (!showNonStandardADSB) {
+      filtered = filtered.filter(ac => {
+        const type = ac.t || '';
+        return !type.includes('tisb') && !type.includes('adsr') && !type.includes('mlat');
+      });
     }
-  }, [allAircraft, selectedPlaneFilters, planesDatabase]);
+    
+    // Then apply plane model filters
+    if (selectedPlaneFilters.size > 0 && planesDatabase) {
+      filtered = filtered.filter(matchesFilter);
+      setAircraft(filtered);
+      console.log(`Filtered ${filtered.length} aircraft out of ${allAircraft.length} (filters: ${Array.from(selectedPlaneFilters).join(', ')}, non-standard: ${showNonStandardADSB})`);
+    } else {
+      setAircraft(filtered);
+      console.log(`Showing ${filtered.length} aircraft out of ${allAircraft.length} (non-standard: ${showNonStandardADSB})`);
+    }
+  }, [allAircraft, selectedPlaneFilters, planesDatabase, showNonStandardADSB]);
 
   useEffect(() => {
     console.log('useEffect running, LOAD_LOCAL_DATABASE:', LOAD_LOCAL_DATABASE);
@@ -772,7 +785,7 @@ function App() {
         el.style.width = isSelected ? '40px' : '32px';
         el.style.height = isSelected ? '40px' : '32px';
         el.style.cursor = 'pointer';
-        el.style.backgroundImage = isSelected ? 'url(/KL.svg)' : 'url(/plane.png)';
+        el.style.backgroundImage = isSelected ? 'url(/blank_plane.png)' : 'url(/blank_plane.png)';
         el.style.backgroundSize = 'contain';
         el.style.backgroundRepeat = 'no-repeat';
         el.style.backgroundPosition = 'center';
@@ -835,7 +848,7 @@ function App() {
         el.style.width = isSelected ? '40px' : '32px';
         el.style.height = isSelected ? '40px' : '32px';
         el.style.cursor = 'pointer';
-        el.style.backgroundImage = isSelected ? 'url(/KL.svg)' : 'url(/plane.png)';
+        el.style.backgroundImage = isSelected ? 'url(/blank_plane.png)' : 'url(/blank_plane.png)';
         el.style.backgroundSize = 'contain';
         el.style.backgroundRepeat = 'no-repeat';
         el.style.backgroundPosition = 'center';
@@ -1011,6 +1024,36 @@ function App() {
                     onChange={(e) => setUseCustomLocation(e.target.checked)}
                   />
                   <span>Use Custom Location</span>
+                </label>
+              </div>
+
+              <div className="settings-section">
+                <label className="checkbox-label">
+                  <input 
+                    type="checkbox" 
+                    checked={showNonStandardADSB}
+                    onChange={(e) => {
+                      const newValue = e.target.checked;
+                      setShowNonStandardADSB(newValue);
+                      localStorage.setItem('showNonStandardADSB', newValue.toString());
+                    }}
+                  />
+                  <span>Show Non-Standard ADS-B (TIS-B, ADSR, MLAT)</span>
+                </label>
+              </div>
+
+              <div className="settings-section">
+                <label className="checkbox-label">
+                  <input 
+                    type="checkbox" 
+                    checked={devMode}
+                    onChange={(e) => {
+                      const newValue = e.target.checked;
+                      setDevMode(newValue);
+                      localStorage.setItem('devMode', newValue.toString());
+                    }}
+                  />
+                  <span>Developer Mode (Show Raw Data Fields)</span>
                 </label>
               </div>
 
@@ -1492,12 +1535,29 @@ function App() {
                   <p><strong>Registration:</strong> {selectedAircraftDetail.Registration}</p>
                 </div>
               )}
-              {selectedAircraftDetail.Type && (
+              {selectedAircraftDetail.Model && (
                 <div className="detail-item detail-item-4">
                   <Plane size={24} color={currentColors.primary} strokeWidth={2} />
-                  <p><strong>Type:</strong> {selectedAircraftDetail.Type}</p>
+                  <p><strong>Model:</strong> {selectedAircraftDetail.Model}</p>
                 </div>
               )}
+              {devMode && selectedAircraftDetail && (() => {
+                const currentAircraft = aircraft.find(ac => ac.hex.replace('~', '') === selectedAircraftDetail.ICAO);
+                return currentAircraft && (
+                  <>
+                    {currentAircraft.t && (
+                      <div className="detail-item" style={{ opacity: 0.7, fontSize: '0.85rem' }}>
+                        <p><strong>[DEV] Type Code:</strong> {currentAircraft.t}</p>
+                      </div>
+                    )}
+                    {currentAircraft.desc && (
+                      <div className="detail-item" style={{ opacity: 0.7, fontSize: '0.85rem' }}>
+                        <p><strong>[DEV] Description:</strong> {currentAircraft.desc}</p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               {selectedAircraftDetail.Manufacturer && (
                 <div className="detail-item detail-item-5">
                   <Factory size={24} color={currentColors.primary} strokeWidth={2} />

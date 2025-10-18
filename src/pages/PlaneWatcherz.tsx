@@ -58,6 +58,8 @@ function PlaneWatcherz() {
   const [useCustomLocation, setUseCustomLocation] = useState(() => localStorage.getItem('useCustomLocation') === 'true');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('soundEnabled') !== 'false');
   const [dataSource, setDataSource] = useState<'adsb.fi' | 'airplanes.live'>(() => (localStorage.getItem('dataSource') as 'adsb.fi' | 'airplanes.live') || 'adsb.fi');
+  const [showNonStandardADSB, setShowNonStandardADSB] = useState(() => localStorage.getItem('showNonStandardADSB') === 'true');
+  const [devMode, setDevMode] = useState(() => localStorage.getItem('devMode') === 'true');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [planesDatabase, setPlanesDatabase] = useState<PlanesDatabase | null>(null);
@@ -227,17 +229,28 @@ function PlaneWatcherz() {
       });
   }, []);
 
-  // Filter aircraft whenever allAircraft or selectedPlaneFilters changes
+  // Filter aircraft whenever allAircraft, selectedPlaneFilters, or showNonStandardADSB changes
   useEffect(() => {
-    if (selectedPlaneFilters.size > 0 && planesDatabase) {
-      const filtered = allAircraft.filter(matchesFilter);
-      setAircraft(filtered);
-      console.log(`Filtered ${filtered.length} aircraft out of ${allAircraft.length} (filters: ${Array.from(selectedPlaneFilters).join(', ')})`);
-    } else {
-      setAircraft(allAircraft);
-      console.log(`Showing all ${allAircraft.length} aircraft (no filter)`);
+    let filtered = allAircraft;
+    
+    // First filter by data source type if needed
+    if (!showNonStandardADSB) {
+      filtered = filtered.filter(ac => {
+        const type = ac.t || '';
+        return !type.includes('tisb') && !type.includes('adsr') && !type.includes('mlat');
+      });
     }
-  }, [allAircraft, selectedPlaneFilters, planesDatabase]);
+    
+    // Then apply plane model filters
+    if (selectedPlaneFilters.size > 0 && planesDatabase) {
+      filtered = filtered.filter(matchesFilter);
+      setAircraft(filtered);
+      console.log(`Filtered ${filtered.length} aircraft out of ${allAircraft.length} (filters: ${Array.from(selectedPlaneFilters).join(', ')}, non-standard: ${showNonStandardADSB})`);
+    } else {
+      setAircraft(filtered);
+      console.log(`Showing ${filtered.length} aircraft out of ${allAircraft.length} (non-standard: ${showNonStandardADSB})`);
+    }
+  }, [allAircraft, selectedPlaneFilters, planesDatabase, showNonStandardADSB]);
 
   // Get user location
   useEffect(() => {
@@ -386,7 +399,7 @@ function PlaneWatcherz() {
         const el = existingMarker.getElement();
         el.style.width = isSelected ? '40px' : '32px';
         el.style.height = isSelected ? '40px' : '32px';
-        el.style.backgroundImage = isSelected ? 'url(/KL.svg)' : 'url(/plane.png)';
+        el.style.backgroundImage = isSelected ? 'url(/blank_plane.png)' : 'url(/blank_plane.png)';
         el.style.zIndex = isSelected ? '1000' : '1';
       } else {
         // Create new marker
@@ -394,7 +407,7 @@ function PlaneWatcherz() {
         el.style.width = isSelected ? '40px' : '32px';
         el.style.height = isSelected ? '40px' : '32px';
         el.style.cursor = 'pointer';
-        el.style.backgroundImage = isSelected ? 'url(/KL.svg)' : 'url(/plane.png)';
+        el.style.backgroundImage = isSelected ? 'url(/blank_plane.png)' : 'url(/blank_plane.png)';
         el.style.backgroundSize = 'contain';
         el.style.backgroundRepeat = 'no-repeat';
         el.style.backgroundPosition = 'center';
@@ -462,6 +475,36 @@ function PlaneWatcherz() {
                   onChange={(e) => setUseCustomLocation(e.target.checked)}
                 />
                 Use Custom Location
+              </label>
+            </div>
+
+            <div className="settings-section">
+              <label>
+                <input 
+                  type="checkbox"
+                  checked={showNonStandardADSB}
+                  onChange={(e) => {
+                    const newValue = e.target.checked;
+                    setShowNonStandardADSB(newValue);
+                    localStorage.setItem('showNonStandardADSB', newValue.toString());
+                  }}
+                />
+                Show Non-Standard ADS-B (TIS-B, ADSR, MLAT)
+              </label>
+            </div>
+
+            <div className="settings-section">
+              <label>
+                <input 
+                  type="checkbox"
+                  checked={devMode}
+                  onChange={(e) => {
+                    const newValue = e.target.checked;
+                    setDevMode(newValue);
+                    localStorage.setItem('devMode', newValue.toString());
+                  }}
+                />
+                Developer Mode (Show Type Code & Description)
               </label>
             </div>
 
@@ -896,8 +939,19 @@ function PlaneWatcherz() {
           {selectedAircraft.r && (
             <p><strong>Registration:</strong> {selectedAircraft.r}</p>
           )}
-          {selectedAircraft.t && (
-            <p><strong>Type:</strong> {selectedAircraft.t}</p>
+          {devMode ? (
+            <>
+              {selectedAircraft.t && !selectedAircraft.t.includes('tisb') && !selectedAircraft.t.includes('adsb') && !selectedAircraft.t.includes('adsr') && (
+                <p><strong>Type Code:</strong> {selectedAircraft.t}</p>
+              )}
+              {selectedAircraft.desc && (
+                <p><strong>Description:</strong> {selectedAircraft.desc}</p>
+              )}
+            </>
+          ) : (
+            (selectedAircraft.desc || (selectedAircraft.t && !selectedAircraft.t.includes('tisb') && !selectedAircraft.t.includes('adsb') && !selectedAircraft.t.includes('adsr'))) && (
+              <p><strong>Model:</strong> {selectedAircraft.desc || selectedAircraft.t}</p>
+            )
           )}
           {selectedAircraft.hex && (
             <p><strong>ICAO:</strong> {selectedAircraft.hex.replace('~', '').toUpperCase()}</p>

@@ -29,7 +29,7 @@ interface AircraftDetail {
   ICAO: string;
   Registration: string;
   Manufacturer: string;
-  Type: string;
+  Model: string;
   RegisteredOwners: string;
   Callsign?: string;
   Altitude?: number | 'ground';
@@ -82,7 +82,7 @@ function WearOS() {
         ICAO: hex,
         Registration: aircraftData.r || hex,
         Manufacturer: 'Not found',
-        Type: aircraftData.desc || aircraftData.t || 'Unknown',
+        Model: aircraftData.desc || (aircraftData.t && !aircraftData.t.includes('tisb') && !aircraftData.t.includes('adsb') && !aircraftData.t.includes('adsr') ? aircraftData.t : 'Unknown'),
         RegisteredOwners: 'Not found',
         Callsign: callsign,
         Altitude: altitude,
@@ -113,7 +113,7 @@ function WearOS() {
               ICAO: hex,
               Registration: aircraft.registration || hex,
               Manufacturer: aircraft.manufacturer || 'Unknown',
-              Type: aircraft.type || aircraft.icao_type || 'Unknown',
+              Model: aircraft.type || aircraft.icao_type || 'Unknown',
               RegisteredOwners: aircraft.registered_owner || 'Unknown',
               Callsign: callsign,
               Altitude: altitude,
@@ -180,7 +180,7 @@ function WearOS() {
               ICAO: hex,
               Registration: hexdbData.Registration || hex,
               Manufacturer: hexdbData.Manufacturer || 'Unknown',
-              Type: hexdbData.Type || hexdbData.ICAOTypeCode || 'Unknown',
+              Model: hexdbData.Type || hexdbData.ICAOTypeCode || 'Unknown',
               RegisteredOwners: hexdbData.RegisteredOwners || 'Unknown',
               Callsign: callsign,
               Altitude: altitude,
@@ -469,8 +469,8 @@ function WearOS() {
               <div className="wearos-detail">
                 <Plane size={18} color={currentColors.primary} strokeWidth={2} />
                 <div className="wearos-detail-text">
-                  <span className="wearos-detail-label">Type</span>
-                  <span className="wearos-detail-value">{selectedAircraftDetail.Type}</span>
+                  <span className="wearos-detail-label">Model</span>
+                  <span className="wearos-detail-value">{selectedAircraftDetail.Model}</span>
                 </div>
               </div>
 
