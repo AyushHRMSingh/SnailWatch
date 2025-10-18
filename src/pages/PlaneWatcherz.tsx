@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Settings, X, Volume2, VolumeX } from 'lucide-react';
+import { Settings, X, Volume2, VolumeX, Filter } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useColors } from '../context/ColorContext';
@@ -27,6 +27,21 @@ interface Aircraft {
   dir?: number;
 }
 
+interface PlaneModel {
+  plane_name: string;
+  regex: string[];
+  photo_url: string;
+}
+
+interface PlaneManufacturer {
+  manufacturer_name: string;
+  models: PlaneModel[];
+}
+
+interface PlanesDatabase {
+  planes: PlaneManufacturer[];
+}
+
 
 function PlaneWatcherz() {
   const { currentColors } = useColors();
@@ -44,6 +59,9 @@ function PlaneWatcherz() {
   const [dataSource, setDataSource] = useState<'adsb.fi' | 'airplanes.live'>(() => (localStorage.getItem('dataSource') as 'adsb.fi' | 'airplanes.live') || 'adsb.fi');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [planesDatabase, setPlanesDatabase] = useState<PlanesDatabase | null>(null);
+  const [showFilter, setShowFilter] = useState(false);
+  const [selectedPlaneFilter, setSelectedPlaneFilter] = useState<string | null>(() => localStorage.getItem('selectedPlaneFilter') || null);
 
   const previousAircraft = useRef(new Set<string>());
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -54,6 +72,33 @@ function PlaneWatcherz() {
   const previousLocation = useRef<{ lat: number; lon: number } | null>(null);
   const previousRadius = useRef<string | null>(null);
   const fetchCounter = useRef(0);
+
+  // Function to check if aircraft matches the selected filter
+  const matchesFilter = (aircraft: Aircraft): boolean => {
+    if (!selectedPlaneFilter || !planesDatabase) return true;
+    
+    const aircraftType = aircraft.t || aircraft.desc || '';
+    
+    // Find the selected plane model
+    for (const manufacturer of planesDatabase.planes) {
+      for (const model of manufacturer.models) {
+        if (model.plane_name === selectedPlaneFilter) {
+          // Check if aircraft type matches any of the regex patterns
+          return model.regex.some(pattern => {
+            try {
+              const regex = new RegExp(pattern, 'i');
+              return regex.test(aircraftType);
+            } catch (e) {
+              console.error('Invalid regex pattern:', pattern);
+              return false;
+            }
+          });
+        }
+      }
+    }
+    
+    return false;
+  };
 
   const searchLocation = async () => {
     if (!searchQuery.trim()) return;
@@ -133,25 +178,44 @@ function PlaneWatcherz() {
         }));
       }
 
-      setAircraft(currentAircraft);
+      // Filter aircraft based on selected filter
+      const filteredAircraft = selectedPlaneFilter 
+        ? currentAircraft.filter(matchesFilter)
+        : currentAircraft;
+      
+      setAircraft(filteredAircraft);
 
       if (shouldCheckNewPlanes) {
         setCountdown(REFRESH_INTERVAL);
-        const currentHexCodes = new Set(currentAircraft.map(ac => ac.hex));
-        const newEntries = currentAircraft.filter(ac => !previousAircraft.current.has(ac.hex) && ac.r);
+        const newEntries = filteredAircraft.filter(ac => !previousAircraft.current.has(ac.hex) && ac.r);
         
         if (newEntries.length > 0 && audioRef.current && soundEnabled) {
           audioRef.current.currentTime = 0;
           audioRef.current.play().catch(err => console.log('Audio play failed:', err));
         }
         
-        previousAircraft.current = currentHexCodes;
+        // Update with filtered aircraft hex codes
+        const filteredHexCodes = new Set(filteredAircraft.map(ac => ac.hex));
+        previousAircraft.current = filteredHexCodes;
       }
     } catch (err) {
       console.error('Error fetching aircraft:', err);
     }
   };
 
+
+  // Load planes database
+  useEffect(() => {
+    fetch('/planes.json')
+      .then(res => res.json())
+      .then(data => {
+        setPlanesDatabase(data);
+        console.log('✓ Planes database loaded');
+      })
+      .catch(err => {
+        console.error('Failed to load planes database:', err);
+      });
+  }, []);
 
   // Get user location
   useEffect(() => {
@@ -496,6 +560,108 @@ function PlaneWatcherz() {
         {soundEnabled ? <Volume2 size={24} /> : <VolumeX size={24} />}
       </button>
 
+      {/* Filter Button */}
+      <button
+        onClick={() => setShowFilter(true)}
+        style={{
+          position: 'fixed',
+          top: '140px',
+          right: '20px',
+          zIndex: 10001,
+          background: selectedPlaneFilter ? currentColors.primary : currentColors.background,
+          border: `2px solid ${currentColors.primary}`,
+          color: selectedPlaneFilter ? currentColors.bgDark : currentColors.primary,
+          padding: '10px',
+          borderRadius: '8px',
+          cursor: 'pointer'
+        }}
+      >
+        <Filter size={24} />
+      </button>
+
+      {/* Filter Modal */}
+      {showFilter && (
+        <div className="settings-overlay" onClick={() => setShowFilter(false)}>
+          <div className="settings-popup" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+            <div className="settings-header">
+              <h2>FILTER PLANES</h2>
+              <button className="close-button" onClick={() => setShowFilter(false)}>
+                <X size={24} color={currentColors.primary} />
+              </button>
+            </div>
+            
+            <div className="settings-content">
+              <div className="settings-section">
+                <button 
+                  className={`apply-button ${!selectedPlaneFilter ? 'active' : ''}`}
+                  style={{ marginBottom: '1rem', background: !selectedPlaneFilter ? currentColors.primary : 'rgba(0, 255, 0, 0.1)' }}
+                  onClick={() => {
+                    setSelectedPlaneFilter(null);
+                    localStorage.removeItem('selectedPlaneFilter');
+                    setShowFilter(false);
+                  }}
+                >
+                  Show All Planes
+                </button>
+              </div>
+
+              {planesDatabase && planesDatabase.planes.map((manufacturer) => (
+                <div key={manufacturer.manufacturer_name} className="settings-section">
+                  <h3 style={{ 
+                    color: currentColors.primary, 
+                    fontSize: '1.1rem', 
+                    marginBottom: '0.5rem',
+                    borderBottom: `1px solid ${currentColors.primary}`,
+                    paddingBottom: '0.3rem'
+                  }}>
+                    {manufacturer.manufacturer_name}
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                    {manufacturer.models.map((model) => (
+                      <button
+                        key={model.plane_name}
+                        className={`color-mode-button ${selectedPlaneFilter === model.plane_name ? 'active' : ''}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          padding: '0.5rem',
+                          background: selectedPlaneFilter === model.plane_name ? currentColors.primary : 'rgba(0, 255, 0, 0.05)',
+                          border: `1px solid ${currentColors.primary}`,
+                          color: selectedPlaneFilter === model.plane_name ? '#000' : currentColors.primary,
+                          minHeight: '80px'
+                        }}
+                        onClick={() => {
+                          setSelectedPlaneFilter(model.plane_name);
+                          localStorage.setItem('selectedPlaneFilter', model.plane_name);
+                          setShowFilter(false);
+                        }}
+                      >
+                        <img 
+                          src={model.photo_url} 
+                          alt={model.plane_name}
+                          style={{ 
+                            width: '100%', 
+                            height: '60px', 
+                            objectFit: 'cover', 
+                            marginBottom: '0.3rem',
+                            borderRadius: '4px'
+                          }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                        <span style={{ fontSize: '0.8rem', textAlign: 'center' }}>{model.plane_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Map Container */}
       <div ref={mapContainer} style={{ 
         width: '100vw', 
@@ -600,6 +766,18 @@ function PlaneWatcherz() {
         zIndex: 10000
       }}>
         <div>⏱ {countdown}s | Tracking: {aircraft.length}</div>
+        {selectedPlaneFilter && (
+          <div style={{ 
+            fontSize: '0.85rem', 
+            marginTop: '5px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            opacity: 0.8
+          }}>
+            <Filter size={14} /> {selectedPlaneFilter}
+          </div>
+        )}
       </div>
 
       {/* Search Bar */}

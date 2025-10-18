@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
-import { FileText, Plane, Factory, Users, Radio, Settings, X, Navigation, Mountain, Gauge, ExternalLink, Volume2, VolumeX, RotateCcw } from 'lucide-react';
+import { FileText, Plane, Factory, Users, Radio, Settings, X, Navigation, Mountain, Gauge, ExternalLink, Volume2, VolumeX, RotateCcw, Filter } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useColors } from './context/ColorContext';
@@ -57,6 +57,21 @@ interface AircraftDetail {
   };
 }
 
+interface PlaneModel {
+  plane_name: string;
+  regex: string[];
+  photo_url: string;
+}
+
+interface PlaneManufacturer {
+  manufacturer_name: string;
+  models: PlaneModel[];
+}
+
+interface PlanesDatabase {
+  planes: PlaneManufacturer[];
+}
+
 // Configuration: Set to false to skip loading the large local JSON database
 // This speeds up loading over slow connections (e.g., ngrok tunnels)
 const LOAD_LOCAL_DATABASE = false;
@@ -79,6 +94,9 @@ function App() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('soundEnabled') !== 'false'); // Default true
   const [dataSource, setDataSource] = useState<'adsb.fi' | 'airplanes.live'>(() => (localStorage.getItem('dataSource') as 'adsb.fi' | 'airplanes.live') || 'adsb.fi');
+  const [planesDatabase, setPlanesDatabase] = useState<PlanesDatabase | null>(null);
+  const [showFilter, setShowFilter] = useState(false);
+  const [selectedPlaneFilter, setSelectedPlaneFilter] = useState<string | null>(() => localStorage.getItem('selectedPlaneFilter') || null);
 
   const previousAircraft = useRef(new Set<string>());
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -300,6 +318,33 @@ function App() {
     }
   };
 
+  // Function to check if aircraft matches the selected filter
+  const matchesFilter = (aircraft: Aircraft): boolean => {
+    if (!selectedPlaneFilter || !planesDatabase) return true;
+    
+    const aircraftType = aircraft.t || aircraft.desc || '';
+    
+    // Find the selected plane model
+    for (const manufacturer of planesDatabase.planes) {
+      for (const model of manufacturer.models) {
+        if (model.plane_name === selectedPlaneFilter) {
+          // Check if aircraft type matches any of the regex patterns
+          return model.regex.some(pattern => {
+            try {
+              const regex = new RegExp(pattern, 'i');
+              return regex.test(aircraftType);
+            } catch (e) {
+              console.error('Invalid regex pattern:', pattern);
+              return false;
+            }
+          });
+        }
+      }
+    }
+    
+    return false;
+  };
+
   const fetchData = async () => {
     if (!userLocation) {
       console.log('Waiting for location...');
@@ -347,15 +392,19 @@ function App() {
         }));
       }
 
+      // Filter aircraft based on selected filter
+      const filteredAircraft = selectedPlaneFilter 
+        ? currentAircraft.filter(matchesFilter)
+        : currentAircraft;
+      
       // Always update aircraft list
-      setAircraft(currentAircraft);
+      setAircraft(filteredAircraft);
 
       // Only check for new planes every REFRESH_INTERVAL seconds
       if (shouldCheckNewPlanes) {
         setCountdown(REFRESH_INTERVAL);
-        const currentHexCodes = new Set(currentAircraft.map(ac => ac.hex));
 
-        const newEntries = currentAircraft.filter(ac => !previousAircraft.current.has(ac.hex) && ac.r);
+        const newEntries = filteredAircraft.filter(ac => !previousAircraft.current.has(ac.hex) && ac.r);
         if (newEntries.length > 0) {
           console.log('New aircraft detected:', newEntries);
           
@@ -378,12 +427,27 @@ function App() {
           }, 300); // 300ms delay to sync with reveal animation
         }
 
-        previousAircraft.current = currentHexCodes;
+        // Update with filtered aircraft hex codes
+        const filteredHexCodes = new Set(filteredAircraft.map(ac => ac.hex));
+        previousAircraft.current = filteredHexCodes;
       }
     } catch (err) {
       console.error('Error fetching aircraft:', err);
     }
   };
+
+  // Load planes database
+  useEffect(() => {
+    fetch('/planes.json')
+      .then(res => res.json())
+      .then(data => {
+        setPlanesDatabase(data);
+        console.log('✓ Planes database loaded');
+      })
+      .catch(err => {
+        console.error('Failed to load planes database:', err);
+      });
+  }, []);
 
   useEffect(() => {
     console.log('useEffect running, LOAD_LOCAL_DATABASE:', LOAD_LOCAL_DATABASE);
@@ -859,6 +923,31 @@ function App() {
         {soundEnabled ? <Volume2 size={24} color={currentColors.primary} /> : <VolumeX size={24} color="#ff0000" />}
       </button>
 
+      <button 
+        className="filter-button"
+        onClick={() => setShowFilter(true)}
+        aria-label="Filter Planes"
+        style={{ 
+          position: 'fixed', 
+          top: '80px', 
+          right: '20px', 
+          background: selectedPlaneFilter ? currentColors.primary : 'rgba(0, 255, 0, 0.1)',
+          border: `2px solid ${currentColors.primary}`,
+          borderRadius: '50%',
+          width: '50px',
+          height: '50px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          zIndex: 1000,
+          backdropFilter: 'blur(10px)',
+          transition: 'all 0.3s ease'
+        }}
+      >
+        <Filter size={24} color={selectedPlaneFilter ? '#000' : currentColors.primary} />
+      </button>
+
       {showSettings && (
         <div className="settings-overlay" onClick={() => setShowSettings(false)}>
           <div className="settings-popup" onClick={(e) => e.stopPropagation()}>
@@ -1013,6 +1102,88 @@ function App() {
         </div>
       )}
 
+      {showFilter && (
+        <div className="settings-overlay" onClick={() => setShowFilter(false)}>
+          <div className="settings-popup" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+            <div className="settings-header">
+              <h2>FILTER PLANES</h2>
+              <button className="close-button" onClick={() => setShowFilter(false)}>
+                <X size={24} color={currentColors.primary} />
+              </button>
+            </div>
+            
+            <div className="settings-content">
+              <div className="settings-section">
+                <button 
+                  className={`apply-button ${!selectedPlaneFilter ? 'active' : ''}`}
+                  style={{ marginBottom: '1rem', background: !selectedPlaneFilter ? currentColors.primary : 'rgba(0, 255, 0, 0.1)' }}
+                  onClick={() => {
+                    setSelectedPlaneFilter(null);
+                    localStorage.removeItem('selectedPlaneFilter');
+                    setShowFilter(false);
+                  }}
+                >
+                  Show All Planes
+                </button>
+              </div>
+
+              {planesDatabase && planesDatabase.planes.map((manufacturer) => (
+                <div key={manufacturer.manufacturer_name} className="settings-section">
+                  <h3 style={{ 
+                    color: currentColors.primary, 
+                    fontSize: '1.1rem', 
+                    marginBottom: '0.5rem',
+                    borderBottom: `1px solid ${currentColors.primary}`,
+                    paddingBottom: '0.3rem'
+                  }}>
+                    {manufacturer.manufacturer_name}
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                    {manufacturer.models.map((model) => (
+                      <button
+                        key={model.plane_name}
+                        className={`color-mode-button ${selectedPlaneFilter === model.plane_name ? 'active' : ''}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          padding: '0.5rem',
+                          background: selectedPlaneFilter === model.plane_name ? currentColors.primary : 'rgba(0, 255, 0, 0.05)',
+                          border: `1px solid ${currentColors.primary}`,
+                          color: selectedPlaneFilter === model.plane_name ? '#000' : currentColors.primary,
+                          minHeight: '80px'
+                        }}
+                        onClick={() => {
+                          setSelectedPlaneFilter(model.plane_name);
+                          localStorage.setItem('selectedPlaneFilter', model.plane_name);
+                          setShowFilter(false);
+                        }}
+                      >
+                        <img 
+                          src={model.photo_url} 
+                          alt={model.plane_name}
+                          style={{ 
+                            width: '100%', 
+                            height: '60px', 
+                            objectFit: 'cover', 
+                            marginBottom: '0.3rem',
+                            borderRadius: '4px'
+                          }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                        <span style={{ fontSize: '0.8rem', textAlign: 'center' }}>{model.plane_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="App-header">
         <h1>PlaneWatch</h1>
         <p style={{ fontSize: '0.75rem', opacity: 0.6, marginTop: '-0.5rem', marginBottom: '0.5rem', fontStyle: 'italic' }}>
@@ -1021,6 +1192,22 @@ function App() {
         {userLocation && (
           <p style={{ fontSize: '0.9rem', opacity: 0.7 }}>
             📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)} • {radius} NM radius
+          </p>
+        )}
+        {selectedPlaneFilter && (
+          <p style={{ 
+            fontSize: '0.85rem', 
+            color: currentColors.primary, 
+            background: 'rgba(0, 255, 0, 0.1)',
+            padding: '0.3rem 0.8rem',
+            borderRadius: '20px',
+            border: `1px solid ${currentColors.primary}`,
+            marginTop: '0.5rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <Filter size={16} /> Filtering: {selectedPlaneFilter}
           </p>
         )}
         {locationError && (

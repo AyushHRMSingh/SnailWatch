@@ -1,0 +1,129 @@
+{
+  "planes": [
+    {
+      "manufacturer_name": "Boeing",
+      "models": [
+        {
+          "plane_name": "Boeing 737",
+          "regex": ["B737", "737", "B73.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Boeing_737-8_%28Southwest_Airlines%29.jpg/320px-Boeing_737-8_%28Southwest_Airlines%29.jpg"
+        },
+        {
+          "plane_name": "Boeing 747",
+          "regex": ["B747", "747", "B74.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Lufthansa_Boeing_747-8_Maiwald.jpg/320px-Lufthansa_Boeing_747-8_Maiwald.jpg"
+        },
+        {
+          "plane_name": "Boeing 757",
+          "regex": ["B757", "757", "B75.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Delta_Air_Lines_Boeing_757-200_N6716C.jpg/320px-Delta_Air_Lines_Boeing_757-200_N6716C.jpg"
+        },
+        {
+          "plane_name": "Boeing 767",
+          "regex": ["B767", "767", "B76.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/United_Airlines_Boeing_767-300ER_N676UA.jpg/320px-United_Airlines_Boeing_767-300ER_N676UA.jpg"
+        },
+        {
+          "plane_name": "Boeing 777",
+          "regex": ["B777", "777", "B77.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Emirates_Boeing_777-300ER_A6-ECE.jpg/320px-Emirates_Boeing_777-300ER_A6-ECE.jpg"
+        },
+        {
+          "plane_name": "Boeing 787 Dreamliner",
+          "regex": ["B787", "787", "B78.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/All_Nippon_Airways_Boeing_787-8_Dreamliner_JA801A.jpg/320px-All_Nippon_Airways_Boeing_787-8_Dreamliner_JA801A.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "Airbus",
+      "models": [
+        {
+          "plane_name": "Airbus A320",
+          "regex": ["A320", "A32.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Airbus_A320-214%2C_EasyJet_JP7667354.jpg/320px-Airbus_A320-214%2C_EasyJet_JP7667354.jpg"
+        },
+        {
+          "plane_name": "Airbus A330",
+          "regex": ["A330", "A33.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Delta_Air_Lines_Airbus_A330-300_N801NW.jpg/320px-Delta_Air_Lines_Airbus_A330-300_N801NW.jpg"
+        },
+        {
+          "plane_name": "Airbus A340",
+          "regex": ["A340", "A34.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Lufthansa_Airbus_A340-600_D-AIHR.jpg/320px-Lufthansa_Airbus_A340-600_D-AIHR.jpg"
+        },
+        {
+          "plane_name": "Airbus A350",
+          "regex": ["A350", "A35.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Qatar_Airways_Airbus_A350-900_A7-ALA.jpg/320px-Qatar_Airways_Airbus_A350-900_A7-ALA.jpg"
+        },
+        {
+          "plane_name": "Airbus A380",
+          "regex": ["A380", "A38.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/A6-EDY_A380_Emirates_31_jan_2013_jfk_%288442269364%29_%28cropped%29.jpg/320px-A6-EDY_A380_Emirates_31_jan_2013_jfk_%288442269364%29_%28cropped%29.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "Embraer",
+      "models": [
+        {
+          "plane_name": "Embraer E170",
+          "regex": ["E170", "E17.*", "EMB170"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Embraer_170_LOT.jpg/320px-Embraer_170_LOT.jpg"
+        },
+        {
+          "plane_name": "Embraer E190",
+          "regex": ["E190", "E19.*", "EMB190"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/JetBlue_Airways_Embraer_190AR_N304JB.jpg/320px-JetBlue_Airways_Embraer_190AR_N304JB.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "Bombardier",
+      "models": [
+        {
+          "plane_name": "Bombardier CRJ",
+          "regex": ["CRJ", "CL60.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Air_Canada_Express_Bombardier_CRJ-200ER_C-FEJA.jpg/320px-Air_Canada_Express_Bombardier_CRJ-200ER_C-FEJA.jpg"
+        },
+        {
+          "plane_name": "Bombardier Dash 8",
+          "regex": ["DH8.*", "DHC8"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Porter_Airlines_Dash_8_Q400.jpg/320px-Porter_Airlines_Dash_8_Q400.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "Cessna",
+      "models": [
+        {
+          "plane_name": "Cessna 172",
+          "regex": ["C172", "C-172"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Cessna_172S_Skyhawk_SP%2C_Private_JP6817606.jpg/320px-Cessna_172S_Skyhawk_SP%2C_Private_JP6817606.jpg"
+        },
+        {
+          "plane_name": "Cessna Citation",
+          "regex": ["C[5-7][0-9]{2}", "CJ.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg/320px-Cessna_Citation_CJ2%2B_N525CJ_%2840782628893%29.jpg"
+        }
+      ]
+    },
+    {
+      "manufacturer_name": "McDonnell Douglas",
+      "models": [
+        {
+          "plane_name": "McDonnell Douglas MD-80",
+          "regex": ["MD8.*", "MD-8.*"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/American_Airlines_MD-82_N7547A.jpg/320px-American_Airlines_MD-82_N7547A.jpg"
+        },
+        {
+          "plane_name": "McDonnell Douglas DC-10",
+          "regex": ["DC10", "DC-10"],
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/FedEx_Express_McDonnell_Douglas_DC-10-30F_N306FE.jpg/320px-FedEx_Express_McDonnell_Douglas_DC-10-30F_N306FE.jpg"
+        }
+      ]
+    }
+  ]
+}
